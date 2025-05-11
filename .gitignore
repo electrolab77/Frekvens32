@@ -1,0 +1,6 @@
+.pio
+.vscode/*
+include/credentials.h
+include/README
+lib/README
+**/.DS_Store

@@ -1,4 +1,5 @@
 #include "wifiNTP.h"
+#include "debug.h"
 
 WifiNTP::WifiNTP(Clock* clockPtr) : rtc(clockPtr), 
                                     syncSuccess(false),
@@ -6,12 +7,13 @@ WifiNTP::WifiNTP(Clock* clockPtr) : rtc(clockPtr),
                                     daylightOffset_sec(3600) {}
 
 bool WifiNTP::sync() {
+    DEBUG_PRINTLN("WiFi NTP Sync");
     syncSuccess = false;
     statusMessage = "";
 
     // 1. WiFi connection
+    DEBUG_PRINT("WiFi Connexion : ");
     statusMessage = "WIFI CONNECTING";
-    Serial.println("WIFI CONNECTING"); // ### DEBUG ###
     WiFi.begin(ssid, password);
 
     int attempts = 0;
@@ -21,29 +23,33 @@ bool WifiNTP::sync() {
     }
 
     if (WiFi.status() != WL_CONNECTED) {
+        DEBUG_PRINTLN("FAILED");
         statusMessage = "WIFI FAILED";
-        Serial.println("WIFI FAILED"); // ### DEBUG ###
         WiFi.disconnect(true);
         WiFi.mode(WIFI_OFF);
         return false;
     }
+    DEBUG_PRINTLN("OK");
 
-    // 2. NTP configuration
+    // 2. NTP Configuration
+    DEBUG_PRINTLN("NTP Configuration");
     statusMessage = "NTP SYNC";
-    Serial.println("NTP SYNC"); // ### DEBUG ###
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
 
     // 3. Waiting for the hour
+    DEBUG_PRINT("Get Local Time : ");
     struct tm timeinfo;
     if (!getLocalTime(&timeinfo)) {
+        DEBUG_PRINTLN("FAILED");
         statusMessage = "NTP FAILED";
-        Serial.println("NTP FAILED"); // ### DEBUG ###
         WiFi.disconnect(true);
         WiFi.mode(WIFI_OFF);
         return false;
     }
+    DEBUG_PRINTLN("OK");
 
     // 4. RTC Update
+    DEBUG_PRINTLN("RTC Update");
     rtc->setDateTime(
         timeinfo.tm_year + 1900,
         timeinfo.tm_mon + 1,
@@ -54,12 +60,13 @@ bool WifiNTP::sync() {
     );
 
     // 5. WiFi disconnection
+    DEBUG_PRINTLN("WiFi Disconnect");
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
 
     syncSuccess = true;
+    DEBUG_PRINTLN("Sync Success");
     statusMessage = "SYNC OK";
-    Serial.println("SYNC OK"); // ### DEBUG ###
     return true;
 }
 

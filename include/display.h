@@ -34,8 +34,8 @@ class Display {
     void clear(String where = "full");
     void testChar();
     void setIntensity(uint8_t value);
-    void setPixel(uint8_t x, uint8_t y, bool state);
-    void drawChar(char c, int16_t x, int16_t y);
+    void setPixel(uint8_t x, uint8_t y, bool state); // x = row, y = column
+    void drawChar(char c, int16_t x, int16_t y); // x = row, y = column
     void displayText(const String& text);
     void scrollText(const String& text, unsigned long delay);
     void updateScroll();

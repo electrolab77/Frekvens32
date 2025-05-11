@@ -20,6 +20,8 @@ class Settings {
     static const uint8_t VALID_PPQN[11];
     static const uint8_t PPQN_COUNT = 11;
     
+    static const boolean DEBUG_MODE = true;
+
     uint32_t calculateChecksum();
     void setDefaults();
     

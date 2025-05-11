@@ -18,7 +18,7 @@ void Display::begin() {
     setIntensity(10); // Default brightness
 }
 
-// Clear the display
+// Clear the display (full by default, top or botton)
 void Display::clear(String where) {
     int min = 0;
     int max = 16;
@@ -40,8 +40,8 @@ void Display::setIntensity(uint8_t value) {
 }
 
 // Set a pixel on the display
-void Display::setPixel(uint8_t x, uint8_t y, bool state) { // y = line / x = column
-    if (x >= MATRIX_WIDTH || y >= MATRIX_HEIGHT) return;
+void Display::setPixel(uint8_t x, uint8_t y, bool state) { // x = row, y = column -> TO REVIEW
+    if (y >= MATRIX_WIDTH || x >= MATRIX_HEIGHT) return;
     
     if (state) {
         if (x < 8) {
@@ -50,7 +50,7 @@ void Display::setPixel(uint8_t x, uint8_t y, bool state) { // y = line / x = col
             frame[y][1] |= (1 << (15 - x));
         }
     } else {
-        if (x < 8) {
+        if (y < 8) {
             frame[y][0] &= ~(1 << (7 - x));
         } else {
             frame[y][1] &= ~(1 << (15 - x));
@@ -58,7 +58,7 @@ void Display::setPixel(uint8_t x, uint8_t y, bool state) { // y = line / x = col
     }
 }
 
-void Display::drawChar(char c, int16_t x, int16_t y) { // x = line, y = column
+void Display::drawChar(char c, int16_t x, int16_t y) { // x = row, y = column
     uint8_t pattern[Font6x6::CHAR_HEIGHT];
     Font6x6::getCharPattern(c, pattern);
 
@@ -167,6 +167,7 @@ void Display::update() {
     sendFrame();
 }
 
+// Send frame to the SCT2024
 void Display::sendFrame() {
     digitalWrite(LATCH_PIN, LOW);
     for (int i = 0; i < 16; i++) {

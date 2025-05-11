@@ -7,6 +7,7 @@
 #include "wifiNTP.h"
 #include "pulse.h"
 #include "display.h"
+#include "debug.h"
 //#include "microFX1.h"
 //#include "microFX2.h"
 //#include "microFX3.h"
@@ -103,18 +104,18 @@ void changeMode(uint8_t newMode) {
     case MODE_CLOCK:
       matrix.clear();
       displayClockPage();
-      Serial.println("Mode : CLOCK"); // ### DEBUG ###
+      DEBUG_PRINTLN("Mode : CLOCK");
       break;
     case MODE_MICRO:
       matrix.clear();
       //matrix.scrollText("MICRO", settings.getScrollSpeed()); // To be adapted for temporary page title display
-      Serial.println("Mode : MICRO"); // ### DEBUG ###
+      DEBUG_PRINTLN("Mode : MICRO");
       break;
     case MODE_PULSE:
       matrix.clear();
       String pulseText = String("PULSE ") + String(settings.getPulsePPQN()) + String(" PPQN");
       //matrix.scrollText(pulseText, settings.getScrollSpeed()); // To be adapted for temporary page title display
-      Serial.println("Mode : " + pulseText); // ### DEBUG ###
+      DEBUG_PRINTLN("Mode : " + pulseText);
       break;
   }
 }
@@ -131,11 +132,11 @@ void changePage(uint8_t newPage) {
       break;
     case MODE_MICRO:
       //displayMicroPage();
-      Serial.println("New Page"); // ### DEBUG ###
+      DEBUG_PRINTLN("New Page");
       break;
     case MODE_PULSE:
       //displayPulsePage();
-      Serial.println("New Page"); // ### DEBUG ###
+      DEBUG_PRINTLN("New Page");
       break;
   }
 }
@@ -171,16 +172,16 @@ void handleSettings() {
   
   matrix.scrollText(optionText, settings.getScrollDelay());
   matrix.displayValue(valueText);
-  Serial.println(optionText + ", Value = " + valueText); // ### DEBUG ###
+  DEBUG_PRINTLN(optionText + ", Value = " + valueText);
 }
 
 // Buttons callbacks
 void onRedButtonShortPress() {
   if (currentState == STATE_OFF) {
+    DEBUG_PRINTLN("State : RUN");
     currentState = STATE_RUN;
     matrix.displayValue("CIAO");
     delay(2000); 
-    Serial.println("State : RUN"); // ### DEBUG ###
   }
   if (currentState == STATE_RUN) {
     changeMode((currentMode + 1) % 3);
@@ -193,23 +194,23 @@ void onRedButtonShortPress() {
 
 void onRedButtonLongPress() {
   if(currentState == STATE_RUN) {
+    DEBUG_PRINTLN("State : SET");
     currentState = STATE_SET;
     handleSettings();
-    Serial.println("State : SET"); // ### DEBUG ###
   }
   else if(currentState == STATE_SET) {
+    DEBUG_PRINTLN("State : RUN");
     currentState = STATE_RUN;
     changeMode(currentMode);
-    Serial.println("State : RUN"); // ### DEBUG ###
   }
 }
 
 void onYellowButtonShortPress() {
   if (currentState == STATE_OFF) {
+    DEBUG_PRINTLN("State : RUN");
     currentState = STATE_RUN;
     matrix.displayValue("CIAO");
-    delay(2000); 
-    Serial.println("State : RUN"); // ### DEBUG ###
+    delay(2000);
   }
   else if(currentState == STATE_RUN) {
     changePage((currentPage + 1) % 3);
@@ -225,58 +226,70 @@ void onYellowButtonLongPress() {
     if(currentOption == OPTION_SYNC_NTP) {
       // Display sync status
       //matrix.clear();
+      DEBUG_PRINT("Sync NTP : ");
       matrix.displayValue("SYNC");
-      Serial.print("SYNC NTP : "); // ### DEBUG ###
       // Sync execution
       if(wifiNTP.sync()) {
         matrix.displayValue("  OK");
-        Serial.println("OK"); // ### DEBUG ###
+        DEBUG_PRINTLN("OK");
       } else {
         matrix.displayValue("FAIL");
-        Serial.println("FAIL"); // ### DEBUG ###
+        DEBUG_PRINTLN("FAIL");
       }
       delay(2000);
       handleSettings();
     }
     else {
+      DEBUG_PRINT("SAVE : ");
       settings.saveSettings();
       matrix.displayValue("SAVE");
       delay(1000);
       matrix.displayValue("  OK");
       delay(1000);
+      DEBUG_PRINTLN("OK");
       handleSettings();
-      Serial.println("SAVED"); // ### DEBUG ###
+      
     }
   }
 }
 
 void setup() {
-  Serial.begin(115200); // ### DEBUG ###
-  Serial.println("START!"); // ### DEBUG ###
+  // Init debug mode
+  #if DEBUG_MODE
+    Serial.begin(115200);
+    delay(100);  // Gives time for the serial port to initialize
+    DEBUG_PRINTLN("DEBUG ON!");
+  #endif
 
   // Init LED matrix
+  DEBUG_PRINTLN("Init LED Matrix");
   matrix.begin();
   matrix.setIntensity(settings.getLedIntensity());
   matrix.clear();
   matrix.update(); 
 
   // Init buttons
+  DEBUG_PRINTLN("Init buttons");
   redButton.begin();
   yellowButton.begin();
 
   // Buttons callbacks configuration
+  DEBUG_PRINTLN("Buttons callbacks configuration");
   redButton.setShortPressCallback(onRedButtonShortPress);
   redButton.setLongPressCallback(onRedButtonLongPress);
   yellowButton.setShortPressCallback(onYellowButtonShortPress);
   yellowButton.setLongPressCallback(onYellowButtonLongPress);
  
   // Init RTC Clock
+  DEBUG_PRINTLN("Init RTC Clock");
   rtcClock.begin();
 
   // Init Pulse
+  DEBUG_PRINTLN("Init Pulse");
   pulse.begin();
 
   // Init FX
+  DEBUG_PRINTLN("Init FX Pages");
   //microFX1.begin();
   //microFX2.begin();
   //microFX3.begin();
@@ -285,9 +298,11 @@ void setup() {
   //pulseFX3.begin();
   
   // Load parameters
+  DEBUG_PRINTLN("Load Parameters");
   settings.loadSettings();
   
   // Initial state
+  DEBUG_PRINTLN("Current State = OFF");
   currentState = STATE_OFF;
 }
 

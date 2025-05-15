@@ -6,22 +6,22 @@ This project is a customizable ESP32-based LED matrix display inspired by the IK
 
 ## 🧠 Features
 
-**Real-time Clock**: Displays current time/date with NTP synchronization.
-**Audio Pulse Sync (PPQN) Visualization**: Synchronizes with external audio pulse (e.g. from a synthesizer) using a mini-jack input.
-**Mic Input Visualization**: Detects peaks in ambient sound and reacts accordingly.
-**Control Buttons**: Manage display mode and configuration mode with 2 buttons
+- **Real-time Clock**: Displays current time/date with NTP synchronization.
+- **Audio Pulse Sync (PPQN) Visualization**: Synchronizes with external audio pulse (e.g. from a synthesizer) using a mini-jack input.
+- **Mic Input Visualization**: Detects peaks in ambient sound and reacts accordingly.
+- **Control Buttons**: Manage display mode and configuration mode with 2 buttons
 
 ---
 
 ## 🔧 Hardware Setup
 
-**Microcontroller**: ESP32 DevKit (3.3V)
-**16x16 LED Matrix**: IKEA Frekvens original display (4V)
-**Power Supply**: IKEA Frekvens original 4V power supply
-**Pulse Sync**: PPQN input through a 3.5mm mini-jack
-**Microphone Module**: MAX4466 analog mic for peak detection
-**RTC Module**: DS3231 (I²C)
-**User Input**: IKEA Frekvens original push-buttons (1 yellow + 1 red)
+- **Microcontroller**: ESP32 DevKit (3.3V)
+- **16x16 LED Matrix**: IKEA Frekvens original display (4V)
+- **Power Supply**: IKEA Frekvens original 4V power supply
+- **Pulse Sync**: PPQN input through a 3.5mm mini-jack
+- **Microphone Module**: MAX4466 analog mic for peak detection
+- **RTC Module**: DS3231 (I²C)
+- **User Input**: IKEA Frekvens original push-buttons (1 yellow + 1 red)
 
 ---
 
@@ -75,6 +75,8 @@ This project is a customizable ESP32-based LED matrix display inspired by the IK
 - TIME FORMAT : 12 or 24 (default)
 - SYNC NTP : GO (execute synchronization via WiFi)
 - PULSE PPQN : 1, 2, 4, 8, 12, 16, 24 (default), 32, 48, 64 or 96
+- CASE TEMP : Temperature display (from RTC)
+- ESP32 TEMp : Temperature display
 
 ---
 

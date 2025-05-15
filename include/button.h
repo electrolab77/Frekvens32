@@ -3,6 +3,10 @@
 
 #include <Arduino.h>
 
+// Defines for pins
+#define PIN_BTN_YELLOW  17 // GPIO17 for yellow button
+#define PIN_BTN_RED     16 // GPIO16 for red button
+
 class Button {
   private:
     uint8_t pin;                     // Button pin

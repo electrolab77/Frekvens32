@@ -8,9 +8,9 @@
 #include "pulse.h"
 #include "display.h"
 #include "debug.h"
-//#include "microFX1.h"
-//#include "microFX2.h"
-//#include "microFX3.h"
+#include "microFX1.h"
+#include "microFX2.h"
+#include "microFX3.h"
 //#include "pulseFX1.h"
 //#include "pulseFX2.h"
 //#include "pulseFX3.h"
@@ -23,10 +23,6 @@ uint8_t temprature_sens_read();
 #ifdef __cplusplus
 }
 #endif
-
-// Defines for pins
-#define PIN_BTN_YELLOW  17 // GPIO17 for yellow button
-#define PIN_BTN_RED     16 // GPIO16 for red button
 
 // Defines for modes
 #define MODE_CLOCK      0
@@ -71,6 +67,17 @@ uint8_t        currentMode   = MODE_CLOCK;
 uint8_t        currentPage   = 0;
 SettingsOption currentOption = OPTION_LED_INTENSITY;
 
+// Effets visuels
+//FreeFX1 freeFX1;
+//FreeFX2 freeFX2;
+//FreeFX3 freeFX3;
+MicroFX1 microFX1;
+MicroFX2 microFX2;
+MicroFX3 microFX3;
+//PulseFX1 pulseFX1(&pulse);
+//PulseFX2 pulseFX2(&pulse);
+//PulseFX3 pulseFX3(&pulse);
+
 // Managment
 Display  matrix;
 Button   redButton(PIN_BTN_RED);
@@ -102,6 +109,42 @@ void displayClockPage() {
   
   //matrix.scrollText(pageTitle, settings.getScrollSpeed()); // To be adapted for temporary page title display
   matrix.displayValue(pageContent);
+}
+
+// Micro pages display
+void displayMicroPage() {
+  switch(currentPage) {
+    case PAGE_MICRO_FX1:
+      microFX1.update(matrix);
+      //matrix.displayValue("MIC1");
+      break;
+    case PAGE_MICRO_FX2:
+      microFX2.update(matrix);
+      //matrix.displayValue("MIC2");
+      break;
+    case PAGE_MICRO_FX3:
+      microFX3.update(matrix);
+      //matrix.displayValue("MIC3");
+      break;
+  }
+}
+
+// Pulse page display
+void displayPulsePage() {
+  switch(currentPage) {
+    case PAGE_PULSE_FX1:
+      //pulseFX1.update(matrix);
+      matrix.displayValue("PLS1");
+      break;
+    case PAGE_PULSE_FX2:
+      //pulseFX2.update(matrix);
+      matrix.displayValue("PLS2");
+      break;
+    case PAGE_PULSE_FX3:
+      //pulseFX3.update(matrix);
+      matrix.displayValue("PLS3");
+      break;
+  }
 }
 
 // Change mode function
@@ -140,14 +183,15 @@ void changePage(uint8_t newPage) {
   switch(currentMode) {
     case MODE_CLOCK:
       displayClockPage();
+      DEBUG_PRINTLN("Clock : New Page");
       break;
     case MODE_MICRO:
-      //displayMicroPage();
-      DEBUG_PRINTLN("New Page");
+      displayMicroPage();
+      DEBUG_PRINTLN("Micro : New Page");
       break;
     case MODE_PULSE:
       //displayPulsePage();
-      DEBUG_PRINTLN("New Page");
+      DEBUG_PRINTLN("Pulse : New Page");
       break;
   }
 }
@@ -241,7 +285,7 @@ void onYellowButtonShortPress() {
     changePage((currentPage + 1) % 3);
   }
   else if(currentState == STATE_SET) {
-// For temperature options, just refresh the display
+    // For temperature options, just refresh the display
     if(currentOption == OPTION_CASE_TEMP || currentOption == OPTION_ESP32_TEMP) {
       handleSettings();
     } else {
@@ -320,8 +364,8 @@ void setup() {
 
   // Init FX
   DEBUG_PRINTLN("Init FX Pages");
-  //microFX1.begin();
-  //microFX2.begin();
+  microFX1.begin();
+  microFX2.begin();
   //microFX3.begin();
   //pulseFX1.begin();
   //pulseFX2.begin();
@@ -334,6 +378,10 @@ void setup() {
   // Initial state
   DEBUG_PRINTLN("Current State = OFF");
   currentState = STATE_OFF;
+
+  // Set direct state/mode
+  currentState = STATE_RUN;
+  currentMode = MODE_MICRO;
 }
 
 // Loop
@@ -349,12 +397,10 @@ void loop() {
         displayClockPage();
         break;
       case MODE_MICRO:
-        //displayMicroPage();
-        matrix.displayValue("MICR");
+        displayMicroPage();
         break;
       case MODE_PULSE:
-        //displayPulsePage();
-        matrix.displayValue("PULS");
+        displayPulsePage();
         break;
     }
   } else {

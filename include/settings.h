@@ -34,7 +34,7 @@ class Settings {
     uint8_t getScrollSpeed();
     uint8_t getTimeFormat();
     uint8_t getPulsePPQN();
-    
+
     String getScrollSpeedText();
     void nextValue(uint8_t option);
     unsigned long getScrollDelay();

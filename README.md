@@ -76,7 +76,7 @@ This project is a customizable ESP32-based LED matrix display inspired by the IK
 - SYNC NTP : GO (execute synchronization via WiFi)
 - PULSE PPQN : 1, 2, 4, 8, 12, 16, 24 (default), 32, 48, 64 or 96
 - CASE TEMP : Temperature display (from RTC)
-- ESP32 TEMp : Temperature display
+- ESP32 TEMP : Temperature display
 
 ---
 

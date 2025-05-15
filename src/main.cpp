@@ -15,6 +15,15 @@
 //#include "pulseFX2.h"
 //#include "pulseFX3.h"
 
+// For ESP32 temperature
+#ifdef __cplusplus
+extern "C" {
+#endif
+uint8_t temprature_sens_read();
+#ifdef __cplusplus
+}
+#endif
+
 // Defines for pins
 #define PIN_BTN_YELLOW  17 // GPIO17 for yellow button
 #define PIN_BTN_RED     16 // GPIO16 for red button
@@ -51,6 +60,8 @@ enum SettingsOption {
   OPTION_TIME_FORMAT,
   OPTION_SYNC_NTP,
   OPTION_PULSE_PPQN,
+  OPTION_CASE_TEMP,
+  OPTION_ESP32_TEMP, 
   OPTION_COUNT
 };
 
@@ -168,6 +179,20 @@ void handleSettings() {
       optionText = "PULSE PPQN";
       valueText = String(settings.getPulsePPQN());
       break;
+    case OPTION_CASE_TEMP: {
+      optionText = "CASE TEMP";
+      float caseTemp = rtcClock.getTemperature();
+      int caseTempInt = static_cast<int>(caseTemp + 0.5f); // Round to nearest integer
+      valueText = (caseTempInt < 10 ? " " : "") + String(caseTempInt); // Add leading space if single digit
+      break;
+    }
+    case OPTION_ESP32_TEMP: {
+      optionText = "ESP32 TEMP";
+      float espTemp = (temprature_sens_read() - 32) / 1.8;  // Convert Fahrenheit to Celsius
+      int espTempInt = static_cast<int>(espTemp + 0.5f);
+      valueText = (espTempInt < 10 ? " " : "") + String(espTempInt);
+      break;
+    }
   }
   
   matrix.scrollText(optionText, settings.getScrollDelay());
@@ -216,8 +241,13 @@ void onYellowButtonShortPress() {
     changePage((currentPage + 1) % 3);
   }
   else if(currentState == STATE_SET) {
-    settings.nextValue(currentOption);
-    handleSettings();
+// For temperature options, just refresh the display
+    if(currentOption == OPTION_CASE_TEMP || currentOption == OPTION_ESP32_TEMP) {
+      handleSettings();
+    } else {
+      settings.nextValue(currentOption);
+      handleSettings();
+    }
   }
 }
 

@@ -58,24 +58,29 @@ String Settings::getScrollSpeedText() {
 
 void Settings::nextValue(uint8_t option) {
     switch(option) {
-        case 0: // LED INTENSITY
+        case OPTION_LED_INTENSITY:
+            // Increment LED intensity by 10, range 10-99
             data.ledIntensity += 10;
-            if (data.ledIntensity == 100) { 
+            if (data.ledIntensity == 100) {
                 data.ledIntensity = 99;
-            } else if (data.ledIntensity > 100 || data.ledIntensity < 10) { 
+            }
+            else if (data.ledIntensity > 100 || data.ledIntensity < 10) {
                 data.ledIntensity = 10;
             }
             break;
-            
-        case 1: // SCROLL SPEED
+
+        case OPTION_SCROLL_SPEED:
+            // Cycle through speeds (0=Slow, 1=Medium, 2=Fast)
             data.scrollSpeed = (data.scrollSpeed + 1) % 3;
             break;
-            
-        case 2: // TIME FORMAT
+
+        case OPTION_TIME_FORMAT:
+            // Toggle between 12/24h
             data.timeFormat = (data.timeFormat == 12) ? 24 : 12;
             break;
-            
-        case 4: // PULSE PPQN
+
+        case OPTION_PULSE_PPQN:
+            // Find current PPQN index
             int currentIndex = 0;
             for(int i = 0; i < PPQN_COUNT; i++) {
                 if(VALID_PPQN[i] == data.pulsePPQN) {
@@ -83,10 +88,14 @@ void Settings::nextValue(uint8_t option) {
                     break;
                 }
             }
+            // Move to next valid PPQN
             currentIndex = (currentIndex + 1) % PPQN_COUNT;
             data.pulsePPQN = VALID_PPQN[currentIndex];
             break;
     }
+    
+    // Save settings after any change
+    //saveSettings();
 }
 
 unsigned long Settings::getScrollDelay() {

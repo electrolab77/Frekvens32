@@ -4,6 +4,20 @@
 #include <Arduino.h>
 #include <EEPROM.h>
 
+// Options of the menu
+enum SettingsOption {
+  OPTION_CASE_TEMP,
+  OPTION_ESP32_TEMP, 
+  OPTION_LED_INTENSITY,
+  OPTION_SCROLL_SPEED,
+  OPTION_PULSE_PPQN,
+  OPTION_TIME_FORMAT,
+  OPTION_SYNC_NTP,
+  OPTION_TWITCH_MODE,
+  //OPTION_DEMO_MODE; // To be implemented
+  OPTION_COUNT
+};
+
 class Settings {
   private:
     struct SettingsData {

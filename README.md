@@ -7,8 +7,8 @@ This project is a customizable ESP32-based LED matrix display inspired by the IK
 ## 🧠 Features
 
 - **Real-time Clock**: Displays current time/date with NTP synchronization.
-- **Audio Pulse Sync (PPQN) Visualization**: Synchronizes with external audio pulse (e.g. from a synthesizer) using a mini-jack input.
 - **Mic Input Visualization**: Detects peaks in ambient sound and reacts accordingly.
+- **Audio Pulse Sync (PPQN) Visualization**: Synchronizes with external audio pulse (e.g. from a synthesizer) using a mini-jack input.
 - **Control Buttons**: Manage display mode and configuration mode with 2 buttons
 
 ---
@@ -16,8 +16,8 @@ This project is a customizable ESP32-based LED matrix display inspired by the IK
 ## 🔧 Hardware Setup
 
 - **Microcontroller**: ESP32 DevKit (3.3V)
-- **16x16 LED Matrix**: IKEA Frekvens original display (4V)
-- **Power Supply**: IKEA Frekvens original 4V power supply
+- **16x16 LED Matrix**: IKEA Frekvens original display (~4V)
+- **Power Supply**: IKEA Frekvens original ~4V power supply
 - **Pulse Sync**: PPQN input through a 3.5mm mini-jack
 - **Microphone Module**: MAX4466 analog mic for peak detection
 - **RTC Module**: DS3231 (I²C)
@@ -46,7 +46,7 @@ This project is a customizable ESP32-based LED matrix display inspired by the IK
 
 - 6x6 pixel font stored in `PROGMEM` in `FONT_6X6[]`.
 - Each character is defined by 6 bytes (rows).
-- Horizontal scrolling with 1 pixel gap between letters.
+- Horizontal scrolling (with 1 pixel gap between letters).
 - Custom drawing function handles row-by-row rendering.
 
 ---
@@ -63,20 +63,21 @@ This project is a customizable ESP32-based LED matrix display inspired by the IK
 
 - Red short : Start display (if off) / Change mode (normal mode) / Change page (menu mode)
 - Red long : Enter the menu (normal mode) / Exit the menu (menu mode)
-- Yellow short : Start display (if off) / Change page (normal mode) / Change value (menu mode)
-- Yellow long : Save option (menu mode) / Sync NTP (NTP page in menu mode)
+- Yellow short : Start display (if off) / Change page (normal mode) / Change value (menu mode) / Sync NTP (menu mode) / Launch Twitch Mode (menu mode)
+- Yellow long : Save option (menu mode)
 
 ---
 
 ## 🎛️ Settings Menu
 
+- CASE TEMP : Display case temperature (from RTC)
+- ESP32 TEMP : Display ESP32 temperature
 - LED INTENSITY : 10 to 99%
 - SCROLL SPEED : Slow (SL), Moderate (MD, default) or Fast (FS)
+- PULSE PPQN : 1, 2, 4, 8, 12, 16, 24 (default), 32, 48, 64 or 96
 - TIME FORMAT : 12 or 24 (default)
 - SYNC NTP : GO (execute synchronization via WiFi)
-- PULSE PPQN : 1, 2, 4, 8, 12, 16, 24 (default), 32, 48, 64 or 96
-- CASE TEMP : Temperature display (from RTC)
-- ESP32 TEMP : Temperature display
+- TWITCH MODE : GO (Launch Twitch mode)
 
 ---
 
@@ -92,8 +93,9 @@ This project is a customizable ESP32-based LED matrix display inspired by the IK
 - Add Bluetooth/Wi-Fi message update
 - Integration with MIDI sync
 - Brightness control via ambient light
-- Power Control via MOSFET Module : Automatically cuts LED matrix power if ESP32 is not running.
 - Scrolling Text Messages
+- Free visualization (without synchronization)
+- Demo mode
 
 ---
 

@@ -24,12 +24,13 @@ class Display {
     String currentScrollText;
     unsigned long lastScrollTime;
     unsigned long scrollDelay;
+    uint16_t scrollPassCount;   
+    uint16_t scrollMaxPasses;  
 
     // Send the current frame to the display
     void sendFrame();
 
   public:
-    Display();
     void begin();
     void clear(String where = "full");
     void testChar();
@@ -37,8 +38,10 @@ class Display {
     void setPixel(uint8_t x, uint8_t y, bool state); // x = row, y = column
     void drawChar(char c, int16_t x, int16_t y); // x = row, y = column
     void displayText(const String& text);
-    void scrollText(const String& text, unsigned long delay);
+    void scrollText(const String& text, unsigned long delay, uint16_t passes = 0);
     void updateScroll();
+    bool isScrolling() const { return currentScrollText.length() > 0; }
+    void stopScroll() { currentScrollText = ""; }
     void displayValue(const String& value);
     void update();
 };

@@ -1,11 +1,5 @@
 #include "display.h"
 
-// Constructor
-Display::Display() 
-    : scrollPosition(0), currentScrollText(""), lastScrollTime(0), scrollDelay(80) {
-    clear();
-}
-
 // Initialize the matrix
 void Display::begin() {
     pinMode(DATA_PIN, OUTPUT);
@@ -86,17 +80,19 @@ void Display::displayText(const String& text) {
 }
 
 // Scroll text across the display
-void Display::scrollText(const String& text, unsigned long delay) {
+void Display::scrollText(const String& text, unsigned long delay, uint16_t passes) {
     currentScrollText = text;
     scrollPosition = MATRIX_WIDTH;
     scrollDelay = delay;
     lastScrollTime = millis();
+    scrollPassCount = 0;
+    scrollMaxPasses = passes;
 }
 
 void Display::updateScroll() {
     if (currentScrollText.length() == 0) return;
 
-    // Manage timing with precision
+    // Managing timing with precision
     unsigned long now = millis();
     if (now - lastScrollTime < scrollDelay) return;
     lastScrollTime = now;
@@ -106,8 +102,7 @@ void Display::updateScroll() {
     int16_t x = scrollPosition;
     for (size_t i = 0; i < currentScrollText.length(); i++) {
         char c = currentScrollText[i];
-        drawChar(c, 1, x);  // y = 1 (ligne du haut)
-        // Move forward by character width + 1px except after a space
+        drawChar(c, 1, x);
         if (c != ' ') {
             x += Font6x6::CHAR_WIDTH + 1;
         } else {
@@ -117,15 +112,22 @@ void Display::updateScroll() {
 
     scrollPosition--;
 
-    // Calculates the total length of the displayed text
+    // Calculating the total length of the displayed text
     int totalWidth = 0;
     for (char c : currentScrollText) {
         totalWidth += Font6x6::CHAR_WIDTH;
-        if (c != ' ') totalWidth += 1;  // 1px between letters except space
+        if (c != ' ') totalWidth += 1;
     }
 
     if (scrollPosition < -totalWidth) {
         scrollPosition = MATRIX_WIDTH;
+        scrollPassCount++;
+        
+        // Stop if the maximum number of passes is reached
+        if (scrollMaxPasses > 0 && scrollPassCount >= scrollMaxPasses) {
+            currentScrollText = "";
+            return;
+        }
     }
 
     update();
@@ -163,7 +165,6 @@ void Display::displayValue(const String& value) {
 
 // Update the display
 void Display::update() {
-    //clear();
     sendFrame();
 }
 

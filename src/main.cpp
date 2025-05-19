@@ -14,6 +14,7 @@
 //#include "pulseFX1.h"
 //#include "pulseFX2.h"
 //#include "pulseFX3.h"
+#include "twitchAPI.h"
 
 // For ESP32 temperature
 #ifdef __cplusplus
@@ -49,23 +50,15 @@ enum SystemState {
   STATE_SET
 };
 
-// Options of the menu
-enum SettingsOption {
-  OPTION_LED_INTENSITY,
-  OPTION_SCROLL_SPEED,
-  OPTION_TIME_FORMAT,
-  OPTION_SYNC_NTP,
-  OPTION_PULSE_PPQN,
-  OPTION_CASE_TEMP,
-  OPTION_ESP32_TEMP, 
-  OPTION_COUNT
-};
-
 // Global variables
 SystemState    currentState  = STATE_OFF;
 uint8_t        currentMode   = MODE_CLOCK;
 uint8_t        currentPage   = 0;
-SettingsOption currentOption = OPTION_LED_INTENSITY;
+SettingsOption currentOption = OPTION_CASE_TEMP;
+
+// Twitch variables
+unsigned long lastTwitchDisplayTime = 0;
+bool displayingTwitchInfo = false;
 
 // Effets visuels
 //FreeFX1 freeFX1;
@@ -79,13 +72,14 @@ MicroFX3 microFX3;
 //PulseFX3 pulseFX3(&pulse);
 
 // Managment
-Display  matrix;
-Button   redButton(PIN_BTN_RED);
-Button   yellowButton(PIN_BTN_YELLOW);
-Settings settings;
-Clock    rtcClock;
-WifiNTP  wifiNTP(&rtcClock);
-Pulse    pulse;
+Display   matrix;
+Button    redButton(PIN_BTN_RED);
+Button    yellowButton(PIN_BTN_YELLOW);
+Settings  settings;
+Clock     rtcClock;
+WifiNTP   wifiNTP(&rtcClock);
+Pulse     pulse;
+TwitchAPI twitch;
 
 // Clock pages display
 void displayClockPage() {
@@ -106,8 +100,8 @@ void displayClockPage() {
       pageContent = rtcClock.getYearString();
       break;
   }
-  
-  //matrix.scrollText(pageTitle, settings.getScrollSpeed()); // To be adapted for temporary page title display
+
+  //matrix.scrollText(pageTitle, settings.getScrollDelay(), 1); // To be adapted for temporary page title display
   matrix.displayValue(pageContent);
 }
 
@@ -116,33 +110,33 @@ void displayMicroPage() {
   switch(currentPage) {
     case PAGE_MICRO_FX1:
       microFX1.update(matrix);
-      //matrix.displayValue("MIC1");
+      //matrix.displayValue("MIC1"); // TEMP
       break;
     case PAGE_MICRO_FX2:
       microFX2.update(matrix);
-      //matrix.displayValue("MIC2");
+      //matrix.displayValue("MIC2"); // TEMP
       break;
     case PAGE_MICRO_FX3:
       microFX3.update(matrix);
-      //matrix.displayValue("MIC3");
+      //matrix.displayValue("MIC3"); // TEMP
       break;
   }
 }
 
-// Pulse page display
+// Pulse pages display
 void displayPulsePage() {
   switch(currentPage) {
     case PAGE_PULSE_FX1:
       //pulseFX1.update(matrix);
-      matrix.displayValue("PLS1");
+      matrix.displayValue("PLS1"); // TEMP
       break;
     case PAGE_PULSE_FX2:
       //pulseFX2.update(matrix);
-      matrix.displayValue("PLS2");
+      matrix.displayValue("PLS2"); // TEMP
       break;
     case PAGE_PULSE_FX3:
       //pulseFX3.update(matrix);
-      matrix.displayValue("PLS3");
+      matrix.displayValue("PLS3"); // TEMP
       break;
   }
 }
@@ -158,20 +152,21 @@ void changeMode(uint8_t newMode) {
     case MODE_CLOCK:
       matrix.clear();
       displayClockPage();
-      DEBUG_PRINTLN("Mode : CLOCK");
+      DEBUG_PRINTLN("  Mode : CLOCK");
       break;
     case MODE_MICRO:
       matrix.clear();
-      //matrix.scrollText("MICRO", settings.getScrollSpeed()); // To be adapted for temporary page title display
-      DEBUG_PRINTLN("Mode : MICRO");
+      //matrix.scrollText("MICRO", settings.getScrollDelay()); // To be adapted for temporary page title display
+      DEBUG_PRINTLN("  Mode : MICRO");
       break;
     case MODE_PULSE:
       matrix.clear();
-      String pulseText = String("PULSE ") + String(settings.getPulsePPQN()) + String(" PPQN");
-      //matrix.scrollText(pulseText, settings.getScrollSpeed()); // To be adapted for temporary page title display
-      DEBUG_PRINTLN("Mode : " + pulseText);
+      String pulseText = String("PULSE (") + String(settings.getPulsePPQN()) + String(" PPQN)");
+      //matrix.scrollText(pulseText, settings.getScrollDelay()); // To be adapted for temporary page title display
+      DEBUG_PRINTLN("  Mode : " + pulseText);
       break;
   }
+  DEBUG_PRINTLN("    Page : " + String(currentPage + 1));
 }
 
 // Page change function
@@ -183,15 +178,12 @@ void changePage(uint8_t newPage) {
   switch(currentMode) {
     case MODE_CLOCK:
       displayClockPage();
-      DEBUG_PRINTLN("Clock : New Page");
       break;
     case MODE_MICRO:
       displayMicroPage();
-      DEBUG_PRINTLN("Micro : New Page");
       break;
     case MODE_PULSE:
       //displayPulsePage();
-      DEBUG_PRINTLN("Pulse : New Page");
       break;
   }
 }
@@ -202,27 +194,6 @@ void handleSettings() {
   String valueText;
   
   switch(currentOption) {
-    case OPTION_LED_INTENSITY:
-      optionText = "LED INTENSITY";
-      valueText = String(settings.getLedIntensity());
-      matrix.setIntensity(settings.getLedIntensity()); // Change directement l'intensité des LED
-      break;
-    case OPTION_SCROLL_SPEED:
-      optionText = "SCROLL SPEED";
-      valueText = settings.getScrollSpeedText();
-      break;
-    case OPTION_TIME_FORMAT:
-      optionText = "TIME FORMAT";
-      valueText = String(settings.getTimeFormat());
-      break;
-    case OPTION_SYNC_NTP:
-      optionText = "SYNC NTP";
-      valueText = "GO";
-      break;
-    case OPTION_PULSE_PPQN:
-      optionText = "PULSE PPQN";
-      valueText = String(settings.getPulsePPQN());
-      break;
     case OPTION_CASE_TEMP: {
       optionText = "CASE TEMP";
       float caseTemp = rtcClock.getTemperature();
@@ -237,161 +208,77 @@ void handleSettings() {
       valueText = (espTempInt < 10 ? " " : "") + String(espTempInt);
       break;
     }
+    case OPTION_LED_INTENSITY:
+      optionText = "LED INTENSITY";
+      valueText = String(settings.getLedIntensity());
+      matrix.setIntensity(settings.getLedIntensity()); // Change instantly LED intensity
+      break;
+    case OPTION_SCROLL_SPEED:
+      optionText = "SCROLL SPEED";
+      valueText = settings.getScrollSpeedText();
+      break;
+    case OPTION_PULSE_PPQN:
+      optionText = "PULSE PPQN";
+      valueText = String(settings.getPulsePPQN());
+      break;
+    case OPTION_TIME_FORMAT:
+      optionText = "TIME FORMAT";
+      valueText = String(settings.getTimeFormat());
+      break;
+    case OPTION_SYNC_NTP:
+      optionText = "SYNC NTP";
+      valueText = "GO";
+      break;
+    case OPTION_TWITCH_MODE:
+      optionText = "TWITCH MODE";
+      valueText = "GO";
+      break;
   }
   
   matrix.scrollText(optionText, settings.getScrollDelay());
   matrix.displayValue(valueText);
-  DEBUG_PRINTLN(optionText + ", Value = " + valueText);
+  DEBUG_PRINTLN("  " + optionText + " : " + valueText);
 }
 
 // Buttons callbacks
 void onRedButtonShortPress() {
   if (currentState == STATE_OFF) {
+    DEBUG_PRINTLN();
     DEBUG_PRINTLN("State : RUN");
     currentState = STATE_RUN;
     matrix.displayValue("CIAO");
     delay(2000); 
   }
   if (currentState == STATE_RUN) {
-    changeMode((currentMode + 1) % 3);
+    if (twitch.isEnabled()) {
+      matrix.stopScroll();
+      twitch.disable();
+      DEBUG_PRINTLN("  Twitch Mode : OFF"); 
+      DEBUG_PRINTLN(); 
+    } else {   
+      changeMode((currentMode + 1) % 3);
+    }
+
   }
-  else if(currentState == STATE_SET) {
+  else if (currentState == STATE_SET) {
     currentOption = (SettingsOption)((currentOption + 1) % OPTION_COUNT);
     handleSettings();
   }
 }
 
 void onRedButtonLongPress() {
-  if(currentState == STATE_RUN) {
+  if (currentState == STATE_RUN) {
+    DEBUG_PRINTLN();
     DEBUG_PRINTLN("State : SET");
     currentState = STATE_SET;
     handleSettings();
   }
-  else if(currentState == STATE_SET) {
+  else if (currentState == STATE_SET) {
+    DEBUG_PRINTLN();
     DEBUG_PRINTLN("State : RUN");
     currentState = STATE_RUN;
-    changeMode(currentMode);
-  }
-}
-
-void onYellowButtonShortPress() {
-  if (currentState == STATE_OFF) {
-    DEBUG_PRINTLN("State : RUN");
-    currentState = STATE_RUN;
-    matrix.displayValue("CIAO");
-    delay(2000);
-  }
-  else if(currentState == STATE_RUN) {
-    changePage((currentPage + 1) % 3);
-  }
-  else if(currentState == STATE_SET) {
-    // For temperature options, just refresh the display
-    if(currentOption == OPTION_CASE_TEMP || currentOption == OPTION_ESP32_TEMP) {
-      handleSettings();
-    } else {
-      settings.nextValue(currentOption);
-      handleSettings();
-    }
-  }
-}
-
-void onYellowButtonLongPress() {
-  if(currentState == STATE_SET) {
-    if(currentOption == OPTION_SYNC_NTP) {
-      // Display sync status
-      //matrix.clear();
-      DEBUG_PRINT("Sync NTP : ");
-      matrix.displayValue("SYNC");
-      // Sync execution
-      if(wifiNTP.sync()) {
-        matrix.displayValue("  OK");
-        DEBUG_PRINTLN("OK");
-      } else {
-        matrix.displayValue("FAIL");
-        DEBUG_PRINTLN("FAIL");
-      }
-      delay(2000);
-      handleSettings();
-    }
-    else {
-      DEBUG_PRINT("SAVE : ");
-      settings.saveSettings();
-      matrix.displayValue("SAVE");
-      delay(1000);
-      matrix.displayValue("  OK");
-      delay(1000);
-      DEBUG_PRINTLN("OK");
-      handleSettings();
-      
-    }
-  }
-}
-
-void setup() {
-  // Init debug mode
-  #if DEBUG_MODE
-    Serial.begin(115200);
-    delay(100);  // Gives time for the serial port to initialize
-    DEBUG_PRINTLN("DEBUG ON!");
-  #endif
-
-  // Init LED matrix
-  DEBUG_PRINTLN("Init LED Matrix");
-  matrix.begin();
-  matrix.setIntensity(settings.getLedIntensity());
-  matrix.clear();
-  matrix.update(); 
-
-  // Init buttons
-  DEBUG_PRINTLN("Init buttons");
-  redButton.begin();
-  yellowButton.begin();
-
-  // Buttons callbacks configuration
-  DEBUG_PRINTLN("Buttons callbacks configuration");
-  redButton.setShortPressCallback(onRedButtonShortPress);
-  redButton.setLongPressCallback(onRedButtonLongPress);
-  yellowButton.setShortPressCallback(onYellowButtonShortPress);
-  yellowButton.setLongPressCallback(onYellowButtonLongPress);
- 
-  // Init RTC Clock
-  DEBUG_PRINTLN("Init RTC Clock");
-  rtcClock.begin();
-
-  // Init Pulse
-  DEBUG_PRINTLN("Init Pulse");
-  pulse.begin();
-
-  // Init FX
-  DEBUG_PRINTLN("Init FX Pages");
-  microFX1.begin();
-  microFX2.begin();
-  //microFX3.begin();
-  //pulseFX1.begin();
-  //pulseFX2.begin();
-  //pulseFX3.begin();
-  
-  // Load parameters
-  DEBUG_PRINTLN("Load Parameters");
-  settings.loadSettings();
-  
-  // Initial state
-  DEBUG_PRINTLN("Current State = OFF");
-  currentState = STATE_OFF;
-
-  // Set direct state/mode
-  currentState = STATE_RUN;
-  currentMode = MODE_MICRO;
-}
-
-// Loop
-void loop() {
-  // Update buttons
-  redButton.update();
-  yellowButton.update();
-
-  // Update display (regarding selected mode)
-  if(currentState == STATE_RUN) {
+    matrix.stopScroll();
+    // Ne pas réinitialiser la page en cours
     switch(currentMode) {
       case MODE_CLOCK:
         displayClockPage();
@@ -403,10 +290,219 @@ void loop() {
         displayPulsePage();
         break;
     }
-  } else {
-    matrix.updateScroll();
   }
+}
 
-  // Delay to avoid overloading the processor
+void onYellowButtonShortPress() {
+  if (currentState == STATE_OFF) {
+    DEBUG_PRINTLN();
+    DEBUG_PRINTLN("State : RUN");
+    currentState = STATE_RUN;
+    matrix.displayValue("CIAO");
+    delay(2000);
+  }
+  if (currentState == STATE_RUN) {
+    if (twitch.isEnabled()) {
+      matrix.stopScroll(); 
+      twitch.disable();
+      DEBUG_PRINTLN("  Twitch Mode : OFF");
+      DEBUG_PRINTLN();  
+    } else {
+      changePage((currentPage + 1) % 3);
+      DEBUG_PRINTLN("    Page : " + String(currentPage + 1));
+    }
+  }
+  else if (currentState == STATE_SET) {
+    if (currentOption == OPTION_CASE_TEMP || currentOption == OPTION_ESP32_TEMP) {
+      handleSettings();  // Just refresh temperatures
+    } 
+    else if (currentOption == OPTION_SYNC_NTP) {
+      // Display sync status
+      matrix.displayValue("SYNC");
+      if (wifiNTP.sync()) {
+        matrix.displayValue("  OK");
+        DEBUG_PRINTLN("  SYNC NTP : SUCCESS");
+      } else {
+        matrix.displayValue("FAIL");
+        DEBUG_PRINTLN("  SYNC NTP : FAIL");
+      }
+      DEBUG_PRINTLN();
+      delay(2000);
+      handleSettings();
+    }
+    else if (currentOption == OPTION_TWITCH_MODE) {
+      //matrix.stopScroll();
+      matrix.displayValue("SYNC");
+      lastTwitchDisplayTime = 0;
+      displayingTwitchInfo = false;
+      twitch.enable();
+      currentState = STATE_RUN;
+      // Ne pas réinitialiser la page en cours
+      switch(currentMode) {
+        case MODE_CLOCK:
+          displayClockPage();
+          break;
+        case MODE_MICRO:
+          displayMicroPage();
+          break;
+        case MODE_PULSE:
+          displayPulsePage();
+          break;
+      }
+    }
+    else {
+      settings.nextValue(currentOption);  // Change value for all other options
+      handleSettings();
+    }
+  }
+  
+  if (currentState == STATE_SET) {
+    DEBUG_PRINT("> SAVE PARAM : ");
+    settings.saveSettings();
+    matrix.displayValue("SAVE");
+    delay(1000);
+    matrix.displayValue("  OK");
+    delay(1000);
+    DEBUG_PRINTLN("OK");
+    handleSettings();
+  }
+}
+
+void onYellowButtonLongPress() {
+  if (currentState == STATE_SET) {
+    DEBUG_PRINT("> SAVE PARAM : ");
+    settings.saveSettings();
+    matrix.displayValue("SAVE");
+    delay(1000);
+    matrix.displayValue("  OK");
+    delay(1000);
+    DEBUG_PRINTLN("OK");
+    handleSettings();
+  }
+}
+
+void setup() {
+  // Init debug mode
+  #if DEBUG_MODE
+    Serial.begin(115200);
+    delay(1000);  // Gives time for the serial port to initialize
+    DEBUG_PRINTLN("DEBUG ON!");
+  #endif
+
+  DEBUG_PRINTLN();
+  DEBUG_PRINTLN("SETUP");
+
+  // Init LED matrix
+  DEBUG_PRINTLN("  Init LED Matrix");
+  matrix.begin();
+  matrix.setIntensity(settings.getLedIntensity());
+  matrix.clear();
+  matrix.update(); 
+
+  // Init buttons
+  DEBUG_PRINTLN("  Init buttons");
+  redButton.begin();
+  yellowButton.begin();
+
+  // Buttons callbacks configuration
+  DEBUG_PRINTLN("  Buttons callbacks configuration");
+  redButton.setShortPressCallback(onRedButtonShortPress);
+  redButton.setLongPressCallback(onRedButtonLongPress);
+  yellowButton.setShortPressCallback(onYellowButtonShortPress);
+  yellowButton.setLongPressCallback(onYellowButtonLongPress);
+ 
+  // Init RTC Clock
+  DEBUG_PRINTLN("  Init RTC Clock");
+  rtcClock.begin();
+
+  // Init Pulse
+  DEBUG_PRINTLN("  Init Pulse");
+  pulse.begin();
+
+  // Init FX
+  DEBUG_PRINTLN("  Init FX Pages");
+  microFX1.begin();
+  microFX2.begin();
+  microFX3.begin();
+  //pulseFX1.begin();
+  //pulseFX2.begin();
+  //pulseFX3.begin();
+  
+  // Init Twitch Mode
+  DEBUG_PRINTLN("  Init Twitch");
+  twitch.begin();
+
+  // Load parameters
+  DEBUG_PRINTLN("  Load Parameters");
+  settings.loadSettings();
+  
+  // Initial state
+  DEBUG_PRINTLN("  Current State = OFF");
+  currentState = STATE_OFF;
+}
+
+void loop() {
+  // Update buttons
+  redButton.update();
+  yellowButton.update();
+
+  // Update display (regarding selected mode)
+  if(currentState == STATE_RUN) {
+    // Handle Twitch display updates
+    if (twitch.isEnabled()) {
+      unsigned long currentTime = millis();
+        
+      // Handle display window every minute
+      if (!displayingTwitchInfo && (currentTime - lastTwitchDisplayTime >= 60000 || lastTwitchDisplayTime == 0)) {
+        DEBUG_PRINTLN();
+        DEBUG_PRINTLN("TWITCH SCROLL START");
+        displayingTwitchInfo = true;
+        lastTwitchDisplayTime = currentTime;
+
+        String displayText = twitch.getStatusText();
+        DEBUG_PRINTLN("  Display Text : " + displayText);
+        matrix.clear();
+        matrix.scrollText(displayText, settings.getScrollDelay());
+      } 
+      
+      // End display window after 10 seconds
+      else if (displayingTwitchInfo && currentTime - lastTwitchDisplayTime >= 10000) {
+        DEBUG_PRINTLN("TWITCH SCROLL STOP");
+        displayingTwitchInfo = false;
+        matrix.stopScroll();
+      } 
+      
+      if (!displayingTwitchInfo) {  
+        // Return to normal display after scroll
+        switch(currentMode) {
+          case MODE_CLOCK:
+            displayClockPage();
+            break;
+          case MODE_MICRO:
+            displayMicroPage();
+            break;
+          case MODE_PULSE:
+            displayPulsePage();
+            break;
+        }
+      }
+    }
+    else {
+      // Normal mode display
+      switch(currentMode) {
+        case MODE_CLOCK:
+          displayClockPage();
+          break;
+        case MODE_MICRO:
+          displayMicroPage();
+          break;
+        case MODE_PULSE:
+          displayPulsePage();
+          break;
+      }
+    }
+  }
+  
+  matrix.updateScroll();
   delay(10);
 }

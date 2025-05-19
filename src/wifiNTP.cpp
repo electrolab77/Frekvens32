@@ -7,37 +7,40 @@ WifiNTP::WifiNTP(Clock* clockPtr) : rtc(clockPtr),
                                     daylightOffset_sec(3600) {}
 
 bool WifiNTP::sync() {
+    
+    DEBUG_PRINTLN();
     DEBUG_PRINTLN("WiFi NTP Sync");
     syncSuccess = false;
     statusMessage = "";
 
     // 1. WiFi connection
-    DEBUG_PRINT("WiFi Connexion : ");
+    DEBUG_PRINT("  WiFi Connexion : ");
     statusMessage = "WIFI CONNECTING";
     WiFi.begin(ssid, password);
 
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < wifiTimeout) {
+        DEBUG_PRINT(".");
         delay(1000);
         attempts++;
     }
 
     if (WiFi.status() != WL_CONNECTED) {
-        DEBUG_PRINTLN("FAILED");
+        DEBUG_PRINTLN(" FAILED");
         statusMessage = "WIFI FAILED";
         WiFi.disconnect(true);
         WiFi.mode(WIFI_OFF);
         return false;
     }
-    DEBUG_PRINTLN("OK");
+    DEBUG_PRINTLN(" OK");
 
     // 2. NTP Configuration
-    DEBUG_PRINTLN("NTP Configuration");
+    DEBUG_PRINTLN("  NTP Configuration");
     statusMessage = "NTP SYNC";
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
 
     // 3. Waiting for the hour
-    DEBUG_PRINT("Get Local Time : ");
+    DEBUG_PRINT("  Get Local Time : ");
     struct tm timeinfo;
     if (!getLocalTime(&timeinfo)) {
         DEBUG_PRINTLN("FAILED");
@@ -49,7 +52,7 @@ bool WifiNTP::sync() {
     DEBUG_PRINTLN("OK");
 
     // 4. RTC Update
-    DEBUG_PRINTLN("RTC Update");
+    DEBUG_PRINTLN("  RTC Update");
     rtc->setDateTime(
         timeinfo.tm_year + 1900,
         timeinfo.tm_mon + 1,
@@ -60,12 +63,11 @@ bool WifiNTP::sync() {
     );
 
     // 5. WiFi disconnection
-    DEBUG_PRINTLN("WiFi Disconnect");
+    DEBUG_PRINTLN("  WiFi Disconnect");
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
 
     syncSuccess = true;
-    DEBUG_PRINTLN("Sync Success");
     statusMessage = "SYNC OK";
     return true;
 }

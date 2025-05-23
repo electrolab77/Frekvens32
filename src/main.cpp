@@ -59,6 +59,8 @@ SettingsOption currentOption = OPTION_CASE_TEMP;
 // Twitch variables
 unsigned long lastTwitchDisplayTime = 0;
 bool displayingTwitchInfo = false;
+uint8_t scrollCount = 0;
+const uint8_t SCROLL_MAX = 1;
 
 // Effets visuels
 //FreeFX1 freeFX1;
@@ -355,17 +357,6 @@ void onYellowButtonShortPress() {
       handleSettings();
     }
   }
-  
-  if (currentState == STATE_SET) {
-    DEBUG_PRINT("> SAVE PARAM : ");
-    settings.saveSettings();
-    matrix.displayValue("SAVE");
-    delay(1000);
-    matrix.displayValue("  OK");
-    delay(1000);
-    DEBUG_PRINTLN("OK");
-    handleSettings();
-  }
 }
 
 void onYellowButtonLongPress() {
@@ -451,7 +442,7 @@ void loop() {
     // Handle Twitch display updates
     if (twitch.isEnabled()) {
       unsigned long currentTime = millis();
-        
+      
       // Handle display window every minute
       if (!displayingTwitchInfo && (currentTime - lastTwitchDisplayTime >= 60000 || lastTwitchDisplayTime == 0)) {
         DEBUG_PRINTLN();
@@ -459,21 +450,21 @@ void loop() {
         displayingTwitchInfo = true;
         lastTwitchDisplayTime = currentTime;
 
-        String displayText = twitch.getStatusText();
+        String displayText = twitch.getNextStatusText();
         DEBUG_PRINTLN("  Display Text : " + displayText);
         matrix.clear();
-        matrix.scrollText(displayText, settings.getScrollDelay());
+        matrix.scrollText(displayText, settings.getScrollDelay(), 1); // Scroll one time
       } 
       
-      // End display window after 10 seconds
-      else if (displayingTwitchInfo && currentTime - lastTwitchDisplayTime >= 10000) {
+      // Check if scroll is complete
+      if (displayingTwitchInfo && matrix.isScrollComplete()) {
         DEBUG_PRINTLN("TWITCH SCROLL STOP");
         displayingTwitchInfo = false;
         matrix.stopScroll();
-      } 
+      }
       
-      if (!displayingTwitchInfo) {  
-        // Return to normal display after scroll
+      if (!displayingTwitchInfo) {
+        // Return to normal display
         switch(currentMode) {
           case MODE_CLOCK:
             displayClockPage();

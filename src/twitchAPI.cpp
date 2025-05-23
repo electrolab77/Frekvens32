@@ -1,7 +1,7 @@
 #include "twitchAPI.h"
 #include "debug.h"
 
-TwitchAPI::TwitchAPI() : enabled(false) {}
+TwitchAPI::TwitchAPI() : enabled(false), currentInfoIndex(0) {}
 
 void TwitchAPI::begin() {
     disable(); // Initial state is disabled
@@ -60,9 +60,10 @@ void TwitchAPI::disable() {
         streamTitle = "";
         DEBUG_PRINTLN("  Reset Stream Title : OK");
         streamerName = "";
-        gameName = "";
-        isLive = false;
         DEBUG_PRINTLN("  Reset Streamer Name : OK");
+        startTime = "";
+        DEBUG_PRINTLN("  Reset Start Time : OK");
+        isLive = false;
     } else {
         DEBUG_PRINTLN("  > Twitch Mode already OFF !");
     }
@@ -102,7 +103,7 @@ bool TwitchAPI::updateStreamInfo() {
     if (!getAccessToken()) return false;
 
     HTTPClient http;
-    String url = "https://api.twitch.tv/helix/streams?user_id=" + String(TWITCH_BROADCASTER_ID);
+    String url = "https://api.twitch.tv/helix/streams?user_login=" + String(TWITCH_BROADCASTER_ID);
     
     http.begin(url);
     http.addHeader("Client-ID", TWITCH_CLIENT_ID);
@@ -120,20 +121,21 @@ bool TwitchAPI::updateStreamInfo() {
             isLive = true;
             streamTitle = doc["data"][0]["title"].as<String>();
             streamerName = doc["data"][0]["user_name"].as<String>();
-            gameName = doc["data"][0]["game_name"].as<String>();
+            startTime = doc["data"][0]["started_at"].as<String>();
             success = true;
             
             DEBUG_PRINTLN("SUCCESS");
             DEBUG_PRINTLN("  Stream is LIVE");
             DEBUG_PRINTLN("  Stream Title : " + streamTitle);
-            DEBUG_PRINTLN("  Streamer : " + streamerName);
-            DEBUG_PRINTLN("  Game : " + gameName);
+            DEBUG_PRINTLN("  Streamer Name : " + streamerName);
+            DEBUG_PRINTLN("  Start Time : " + startTime);
         } else {
             isLive = false;
-            streamTitle = "";
+            DEBUG_PRINTLN("FAILED");
             DEBUG_PRINTLN("  Stream is OFFLINE");
         }
     } else {
+        isLive = false;
         DEBUG_PRINTLN("FAILED");
         DEBUG_PRINTLN("  Code: " + String(httpCode));
     }
@@ -142,15 +144,38 @@ bool TwitchAPI::updateStreamInfo() {
     return success;
 }
 
-String TwitchAPI::getStatusText() const {
+String TwitchAPI::getNextStatusText() {
     if (!enabled) return "OFF";
-    if (!isLive) return "OFFLINE";
-    
-    // Format: STREAMER / GAME / VIEWERS
-    String status = streamerName;
-    if (gameName.length() > 0) {
-        status += " / " + gameName;
+    if (!isLive) {
+        currentInfoIndex = 0;
+        return "STREAM OFFLINE";
     }
+    
+    String status;
+    switch(currentInfoIndex) {
+        case 0:
+            status = getStreamerName(); // Streamer Name
+            break;
+        case 1:
+            status = customText1; //.length() > 0 ? customText1 : "CUSTOM TEXT 01";
+            break;
+        case 2:
+            status = getCurrentTitle(); // Stream Title
+            break;
+        case 3:
+            status = customText2; //.length() > 0 ? customText2 : "CUSTOM TEXT 02";
+            break;
+        case 4:
+            status = "UPTIME : " + getStreamUptime(); // Uptime
+            break;
+        case 5:
+            status = customText3; //.length() > 0 ? customText3 : "CUSTOM TEXT 03";
+            break;
+    }
+    
+    // Increment index for next time
+    currentInfoIndex = (currentInfoIndex + 1) % INFO_COUNT;
+    
     return status;
 }
 
@@ -165,4 +190,26 @@ bool TwitchAPI::update() {
     }
     
     return true;
+}
+
+String TwitchAPI::getStreamUptime() const {
+    if (startTime.isEmpty()) return "UNKNOWN";
+    
+    // Parse the ISO8601 date from Twitch
+    struct tm tm;
+    strptime(startTime.c_str(), "%Y-%m-%dT%H:%M:%SZ", &tm);
+    time_t startTime = mktime(&tm);
+    
+    // Get current time
+    time_t now;
+    time(&now);
+    
+    // Calculate difference
+    int diff = now - startTime;
+    
+    // Format uptime
+    int hours = diff / 3600;
+    int minutes = (diff % 3600) / 60;
+    
+    return String(hours) + "H" + (minutes < 10 ? "0" : "") + String(minutes);
 }

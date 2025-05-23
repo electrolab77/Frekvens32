@@ -38,6 +38,7 @@ class Display {
     void setPixel(uint8_t x, uint8_t y, bool state); // x = row, y = column
     void drawChar(char c, int16_t x, int16_t y); // x = row, y = column
     void displayText(const String& text);
+    bool isScrollComplete() const { return currentScrollText.isEmpty(); }
     void scrollText(const String& text, unsigned long delay, uint16_t passes = 0);
     void updateScroll();
     bool isScrolling() const { return currentScrollText.length() > 0; }

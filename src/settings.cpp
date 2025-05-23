@@ -16,7 +16,7 @@ uint32_t Settings::calculateChecksum() {
 }
 
 void Settings::setDefaults() {
-    data.ledIntensity = 30; // 30%
+    data.ledIntensity = 10; // 30%
     data.scrollSpeed  = 80; // MD
     data.timeFormat   = 24; // 24H
     data.pulsePPQN    = 24; // 24 PPQN

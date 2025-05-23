@@ -14,7 +14,7 @@ enum SettingsOption {
   OPTION_TIME_FORMAT,
   OPTION_SYNC_NTP,
   OPTION_TWITCH_MODE,
-  //OPTION_DEMO_MODE; // To be implemented
+  OPTION_DEMO_MODE,
   OPTION_COUNT
 };
 

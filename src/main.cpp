@@ -62,6 +62,11 @@ bool displayingTwitchInfo = false;
 uint8_t scrollCount = 0;
 const uint8_t SCROLL_MAX = 1;
 
+// Demo variables
+bool demoMode = false;
+unsigned long lastDemoChange = 0;
+const unsigned long DEMO_INTERVAL = 30000; // 30 seconds
+
 // Effets visuels
 //FreeFX1 freeFX1;
 //FreeFX2 freeFX2;
@@ -235,6 +240,10 @@ void handleSettings() {
       optionText = "TWITCH MODE";
       valueText = "GO";
       break;
+    case OPTION_DEMO_MODE:
+      optionText = "DEMO MODE";
+      valueText = "GO";
+      break;  
   }
   
   matrix.scrollText(optionText, settings.getScrollDelay());
@@ -252,7 +261,15 @@ void onRedButtonShortPress() {
     delay(2000); 
   }
   if (currentState == STATE_RUN) {
-    if (twitch.isEnabled()) {
+    if (demoMode) {
+      demoMode = false;
+      DEBUG_PRINTLN("  Demo Mode : OFF");
+      DEBUG_PRINTLN();
+      //currentMode = MODE_CLOCK;
+      //currentPage = 0;
+      //matrix.displayPage(currentMode, currentPage);
+    }
+    else if (twitch.isEnabled()) {
       matrix.stopScroll();
       twitch.disable();
       DEBUG_PRINTLN("  Twitch Mode : OFF"); 
@@ -304,7 +321,15 @@ void onYellowButtonShortPress() {
     delay(2000);
   }
   if (currentState == STATE_RUN) {
-    if (twitch.isEnabled()) {
+    if (demoMode) {
+      demoMode = false;
+      DEBUG_PRINTLN("  Demo Mode : OFF");
+      DEBUG_PRINTLN();
+      //currentMode = MODE_CLOCK;
+      //currentPage = 0;
+      //matrix.displayPage(currentMode, currentPage);
+    }
+    else if (twitch.isEnabled()) {
       matrix.stopScroll(); 
       twitch.disable();
       DEBUG_PRINTLN("  Twitch Mode : OFF");
@@ -340,6 +365,7 @@ void onYellowButtonShortPress() {
       twitch.enable();
       currentState = STATE_RUN;
       // Ne pas réinitialiser la page en cours
+      /*
       switch(currentMode) {
         case MODE_CLOCK:
           displayClockPage();
@@ -350,7 +376,31 @@ void onYellowButtonShortPress() {
         case MODE_PULSE:
           displayPulsePage();
           break;
-      }
+      }*/
+    }
+    else if (currentOption == OPTION_DEMO_MODE) {
+      matrix.stopScroll(); 
+      matrix.displayValue("DEMO");
+      delay(1000);
+      demoMode = true;
+      lastDemoChange = 0;
+      // Initialiser avec une page aléatoire
+      currentMode = random(3);  // 0 à 2
+      currentPage = random(3);  // 0 à 2
+      currentState = STATE_RUN;
+      // Ne pas réinitialiser la page en cours
+      /*
+      switch(currentMode) {
+        case MODE_CLOCK:
+          displayClockPage();
+          break;
+        case MODE_MICRO:
+          displayMicroPage();
+          break;
+        case MODE_PULSE:
+          displayPulsePage();
+          break;
+      }*/
     }
     else {
       settings.nextValue(currentOption);  // Change value for all other options
@@ -439,8 +489,39 @@ void loop() {
 
   // Update display (regarding selected mode)
   if(currentState == STATE_RUN) {
+    if (demoMode) {
+      unsigned long currentTime = millis();
+      if (currentTime - lastDemoChange >= DEMO_INTERVAL) {
+        lastDemoChange = currentTime;
+        
+        // Choisir aléatoirement un nouveau mode et une nouvelle page
+        uint8_t newMode = random(3);
+        uint8_t newPage = random(3);
+        
+        DEBUG_PRINTLN();
+        DEBUG_PRINTLN("DEMO MODE CHANGE");
+        DEBUG_PRINTLN("  New Mode : " + String(newMode));
+        DEBUG_PRINTLN("  New Page : " + String(newPage));
+        
+        currentMode = newMode;
+        currentPage = newPage;
+        matrix.clear();
+      } else {  
+        switch(currentMode) {
+            case MODE_CLOCK:
+                displayClockPage();
+                break;
+            case MODE_MICRO:
+                displayMicroPage();
+                break;
+            case MODE_PULSE:
+                displayPulsePage();
+                break;
+        }
+      }
+    }
     // Handle Twitch display updates
-    if (twitch.isEnabled()) {
+    else if (twitch.isEnabled()) {
       unsigned long currentTime = millis();
       
       // Handle display window every minute

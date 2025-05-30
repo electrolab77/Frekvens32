@@ -1,5 +1,6 @@
 // Includes
 #include <Arduino.h>
+#include "defines.h"
 #include "settings.h"
 #include "clock.h"
 #include "font6x6.h"
@@ -7,7 +8,9 @@
 #include "wifiNTP.h"
 #include "pulse.h"
 #include "display.h"
-#include "debug.h"
+#include "freeFX1.h"
+#include "freeFX2.h"
+#include "freeFX3.h"
 #include "microFX1.h"
 #include "microFX2.h"
 #include "microFX3.h"
@@ -16,34 +19,7 @@
 //#include "pulseFX3.h" --> To be implemented
 #include "twitchAPI.h"
 
-// For ESP32 temperature
-#ifdef __cplusplus
-extern "C" {
-#endif
-uint8_t temprature_sens_read();
-#ifdef __cplusplus
-}
-#endif
-
-// Defines for modes
-#define MODE_CLOCK      0
-#define MODE_MICRO      1
-#define MODE_PULSE      2
-
-// Defines for pages
-#define PAGE_CLOCK_TIME 0
-#define PAGE_CLOCK_DATE 1
-#define PAGE_CLOCK_YEAR 2
-
-#define PAGE_MICRO_FX1  0
-#define PAGE_MICRO_FX2  1
-#define PAGE_MICRO_FX3  2
-
-#define PAGE_PULSE_FX1  0
-#define PAGE_PULSE_FX2  1
-#define PAGE_PULSE_FX3  2
-
-// Stat of the system
+// State of the system
 enum SystemState {
   STATE_OFF,
   STATE_RUN,
@@ -71,19 +47,10 @@ const uint8_t SCROLL_MAX = 1;
 bool demoMode = false;
 unsigned long lastDemoChange = 0;
 const unsigned long DEMO_INTERVAL = 30000; // 30 seconds
+uint8_t lastDemoMode = 0;
+uint8_t lastDemoPage = 0;
 
-// Vusual effects
-//FreeFX1 freeFX1;
-//FreeFX2 freeFX2;
-//FreeFX3 freeFX3;
-MicroFX1 microFX1;
-MicroFX2 microFX2;
-MicroFX3 microFX3;
-//PulseFX1 pulseFX1(&pulse);
-//PulseFX2 pulseFX2(&pulse);
-//PulseFX3 pulseFX3(&pulse);
-
-// Managment
+// Management
 Display   matrix;
 Button    redButton(PIN_BTN_RED);
 Button    yellowButton(PIN_BTN_YELLOW);
@@ -92,6 +59,17 @@ Clock     rtcClock;
 WifiNTP   wifiNTP(&rtcClock);
 Pulse     pulse;
 TwitchAPI twitch;
+
+// Visual effects
+FreeFX1 freeFX1(&settings);
+FreeFX2 freeFX2(&settings);
+FreeFX3 freeFX3(&settings);
+MicroFX1 microFX1;
+MicroFX2 microFX2;
+MicroFX3 microFX3;
+//PulseFX1 pulseFX1(&pulse); --> To be implemented
+//PulseFX2 pulseFX2(&pulse); --> To be implemented
+//PulseFX3 pulseFX3(&pulse); --> To be implemented
 
 // Clock pages display
 void displayClockPage() {
@@ -125,6 +103,26 @@ void displayClockPage() {
     }
   } else {
     matrix.displayValue(pageContent);
+  }
+}
+
+//Free FX pages display
+void displayFreePage() {
+  unsigned long delay = settings.getFxDelay();
+  
+  switch(currentPage) {
+    case PAGE_FREE_FX1:
+      freeFX1.update(matrix);
+      //matrix.displayValue("FRE1"); // TEMP
+      break;
+    case PAGE_FREE_FX2:
+      freeFX2.update(matrix);
+      //matrix.displayValue("FRE2"); // TEMP
+      break;
+    case PAGE_FREE_FX3:
+      freeFX3.update(matrix);
+      //matrix.displayValue("FRE3"); // TEMP
+      break;
   }
 }
 
@@ -179,6 +177,11 @@ void changeMode(uint8_t newMode) {
       displayClockPage();
       DEBUG_PRINTLN("  Mode : CLOCK");
       break;
+    case MODE_FREE:
+      matrix.clear();
+      //matrix.scrollText("FREE", settings.getFxDelay()); // To be adapted for temporary page title display
+      DEBUG_PRINTLN("  Mode : FREE");
+      break;      
     case MODE_MICRO:
       matrix.clear();
       //matrix.scrollText("MICRO", settings.getScrollDelay()); // To be adapted for temporary page title display
@@ -205,6 +208,9 @@ void changePage(uint8_t newPage) {
       lastTitleDisplay = millis();
       displayingTitle = true;
       displayClockPage();
+      break;
+    case MODE_FREE:
+      //displayFreePage();
       break;
     case MODE_MICRO:
       displayMicroPage();
@@ -244,6 +250,10 @@ void handleSettings() {
       optionText = "SCROLL SPEED";
       valueText = settings.getScrollSpeedText();
       break;
+    case OPTION_FX_SPEED:
+      optionText = "FX SPEED";
+      valueText = String(settings.getFxSpeed());
+      break; 
     case OPTION_PULSE_PPQN:
       optionText = "PULSE PPQN";
       valueText = String(settings.getPulsePPQN());
@@ -317,10 +327,13 @@ void onRedButtonLongPress() {
     DEBUG_PRINTLN("State : RUN");
     currentState = STATE_RUN;
     matrix.stopScroll();
-    // Ne pas réinitialiser la page en cours
+    // Do not reset current page
     switch(currentMode) {
       case MODE_CLOCK:
         displayClockPage();
+        break;
+      case MODE_FREE:
+        displayFreePage();
         break;
       case MODE_MICRO:
         displayMicroPage();
@@ -384,11 +397,14 @@ void onYellowButtonShortPress() {
       displayingTwitchInfo = false;
       twitch.enable();
       currentState = STATE_RUN;
-      // Ne pas réinitialiser la page en cours
+      // Do not reset current page
       /*
       switch(currentMode) {
         case MODE_CLOCK:
           displayClockPage();
+          break;
+        case MODE_FREE:
+          displayFreePage();
           break;
         case MODE_MICRO:
           displayMicroPage();
@@ -404,15 +420,18 @@ void onYellowButtonShortPress() {
       delay(1000);
       demoMode = true;
       lastDemoChange = 0;
-      // Init with random page
+      // Init with random mode/page
       currentMode = random(3);  // 0 to 2
       currentPage = random(3);  // 0 to 2
       currentState = STATE_RUN;
-      // Ne pas réinitialiser la page en cours
+      // Do not reset current page
       /*
       switch(currentMode) {
         case MODE_CLOCK:
           displayClockPage();
+          break;
+        case MODE_FREE:
+          displayFreePage();
           break;
         case MODE_MICRO:
           displayMicroPage();
@@ -476,18 +495,25 @@ void setup() {
   DEBUG_PRINTLN("  Init RTC Clock");
   rtcClock.begin();
 
+  // Init Free
+  DEBUG_PRINTLN("  Init Free --> To be verified");
+  //free.begin(); --> To be verified
+
   // Init Pulse
   DEBUG_PRINTLN("  Init Pulse");
   pulse.begin();
 
   // Init FX
   DEBUG_PRINTLN("  Init FX Pages");
+  freeFX1.begin();
+  freeFX2.begin();
+  freeFX3.begin();
   microFX1.begin();
   microFX2.begin();
   microFX3.begin();
-  //pulseFX1.begin();
-  //pulseFX2.begin();
-  //pulseFX3.begin();
+  //pulseFX1.begin(); --> To be implemented
+  //pulseFX2.begin(); --> To be implemented
+  //pulseFX3.begin(); --> To be implemented
   
   // Init Twitch Mode
   DEBUG_PRINTLN("  Init Twitch");
@@ -498,8 +524,12 @@ void setup() {
   settings.loadSettings();
   
   // Initial state
-  DEBUG_PRINTLN("  Current State = OFF");
+  DEBUG_PRINTLN("  Default State = OFF");
   currentState = STATE_OFF;
+  DEBUG_PRINTLN("  Change current State = RUN");
+  currentState = STATE_RUN;
+  matrix.displayValue("CIAO");
+  delay(2000);
 }
 
 void loop() {
@@ -514,29 +544,40 @@ void loop() {
       if (currentTime - lastDemoChange >= DEMO_INTERVAL) {
         lastDemoChange = currentTime;
         
-        // Choisir aléatoirement un nouveau mode et une nouvelle page
-        uint8_t newMode = random(3);
-        uint8_t newPage = random(3);
+        // Choose new random mode and page, avoiding last combination
+        uint8_t newMode, newPage;
+        do {
+            newMode = random(2); // Only CLOCK and FREE modes
+            newPage = random(3);
+        } while (newMode == lastDemoMode && newPage == lastDemoPage);
         
         DEBUG_PRINTLN();
         DEBUG_PRINTLN("DEMO MODE CHANGE");
-        DEBUG_PRINTLN("  New Mode : " + String(newMode));
-        DEBUG_PRINTLN("  New Page : " + String(newPage));
+        DEBUG_PRINTLN("  Previous Mode/Page : " + String(lastDemoMode) + "/" + String(lastDemoPage));
+        DEBUG_PRINTLN("  New Mode/Page : " + String(newMode) + "/" + String(newPage));
         
+        // Save current as last before changing
+        lastDemoMode = currentMode;
+        lastDemoPage = currentPage;
+        
+        // Update current mode and page
         currentMode = newMode;
         currentPage = newPage;
         matrix.clear();
       } else {  
         switch(currentMode) {
-            case MODE_CLOCK:
-                displayClockPage();
-                break;
-            case MODE_MICRO:
-                displayMicroPage();
-                break;
-            case MODE_PULSE:
-                displayPulsePage();
-                break;
+          case MODE_CLOCK:
+            displayClockPage();
+            break;
+          case MODE_FREE:
+            displayFreePage();
+            break;
+          case MODE_MICRO:
+            displayMicroPage();
+            break;
+          case MODE_PULSE:
+            displayPulsePage();
+            break;
         }
       }
     }
@@ -570,6 +611,9 @@ void loop() {
           case MODE_CLOCK:
             displayClockPage();
             break;
+          case MODE_FREE:
+            displayFreePage();
+            break;
           case MODE_MICRO:
             displayMicroPage();
             break;
@@ -584,6 +628,9 @@ void loop() {
       switch(currentMode) {
         case MODE_CLOCK:
           displayClockPage();
+          break;
+        case MODE_FREE:
+          displayFreePage();
           break;
         case MODE_MICRO:
           displayMicroPage();

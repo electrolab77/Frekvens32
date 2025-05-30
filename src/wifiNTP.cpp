@@ -1,5 +1,5 @@
 #include "wifiNTP.h"
-#include "debug.h"
+#include "defines.h"
 
 WifiNTP::WifiNTP(Clock* clockPtr) : rtc(clockPtr), 
                                     syncSuccess(false),

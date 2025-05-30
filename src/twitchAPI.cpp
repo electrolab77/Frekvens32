@@ -1,5 +1,5 @@
 #include "twitchAPI.h"
-#include "debug.h"
+#include "defines.h"
 
 TwitchAPI::TwitchAPI() : enabled(false), currentInfoIndex(0) {}
 

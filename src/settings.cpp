@@ -18,6 +18,7 @@ uint32_t Settings::calculateChecksum() {
 void Settings::setDefaults() {
     data.ledIntensity = 10; // 30%
     data.scrollSpeed  = 80; // MD
+    data.fxSpeed      = 50; // 50
     data.timeFormat   = 24; // 24H
     data.pulsePPQN    = 24; // 24 PPQN
 }
@@ -56,6 +57,14 @@ String Settings::getScrollSpeedText() {
     }
 }
 
+uint8_t Settings::getFxSpeed() {
+    return data.fxSpeed;
+}
+
+unsigned long Settings::getFxDelay() {
+    return (1000 / 100) * data.fxSpeed;
+}
+
 void Settings::nextValue(uint8_t option) {
     switch(option) {
         case OPTION_LED_INTENSITY:
@@ -72,6 +81,17 @@ void Settings::nextValue(uint8_t option) {
         case OPTION_SCROLL_SPEED:
             // Cycle through speeds (0=Slow, 1=Medium, 2=Fast)
             data.scrollSpeed = (data.scrollSpeed + 1) % 3;
+            break;
+
+        case OPTION_FX_SPEED:
+            // Increment FX speed by 10, range 10-99
+            data.fxSpeed += 10;
+            if (data.fxSpeed == 100) {
+                data.fxSpeed = 99;
+            }
+            else if (data.fxSpeed > 100 || data.fxSpeed < 10) {
+                data.fxSpeed = 10;
+            }
             break;
 
         case OPTION_TIME_FORMAT:

@@ -1,77 +1,58 @@
 #include "microFX3.h"
 
-MicroFX3::MicroFX3() {
-    for(int i = 0; i < NUM_BANDS; i++) {
-        bandLevels[i] = 0;
-        peakLevels[i] = 0;
+MicroFX3::MicroFX3() : peakToPeak(0), intensity(50), historyIndex(0) {
+    // Initialize history
+    for(int i = 0; i < HISTORY_SIZE; i++) {
+        sampleHistory[i] = 0;
     }
-    lastDecayTime = 0;
 }
 
-void MicroFX3::begin() {
-    pinMode(MICRO_PIN, INPUT);
-}
-
-void MicroFX3::analyzeMicrophoneData() {
-    uint32_t sum = 0;
-    uint16_t maxVal = 0;
+void MicroFX3::measureSignal() {
+    unsigned long startMillis = millis();
+    uint16_t signalMax = 0;
+    uint16_t signalMin = 4095;
     
-    // Sample audio multiple times
-    for(int i = 0; i < SAMPLES; i++) {
+    // Sample over time window
+    while (millis() - startMillis < SAMPLE_WINDOW) {
         uint16_t sample = analogRead(MICRO_PIN);
-        sum += sample;
-        if(sample > maxVal) maxVal = sample;
-        delayMicroseconds(100);  // Small delay between samples
+        if (sample > signalMax) signalMax = sample;
+        if (sample < signalMin) signalMin = sample;
     }
     
-    uint16_t avg = sum / SAMPLES;
-    uint16_t amplitude = maxVal - avg;
+    peakToPeak = signalMax - signalMin;
     
-    // Distribute amplitude across bands with some randomization
-    for(int i = 0; i < NUM_BANDS; i++) {
-        int value = map(amplitude, 0, 2048, 0, MAX_HEIGHT);
-        value += random(-2, 3);  // Add some randomness
-        bandLevels[i] = constrain(value, 0, MAX_HEIGHT);
-    }
+    // Update history
+    sampleHistory[historyIndex] = peakToPeak;
+    historyIndex = (historyIndex + 1) % HISTORY_SIZE;
 }
 
-void MicroFX3::updatePeaks() {
-    unsigned long currentTime = millis();
-    
-    // Update peaks and apply decay
-    if(currentTime - lastDecayTime > 50) {  // Decay every 50ms
-        lastDecayTime = currentTime;
-        
-        for(int i = 0; i < NUM_BANDS; i++) {
-            // Update peak if current level is higher
-            if(bandLevels[i] > peakLevels[i]) {
-                peakLevels[i] = bandLevels[i];
-            }
-            // Otherwise decay peak
-            else if(peakLevels[i] > 0) {
-                peakLevels[i] = max(0, (int)peakLevels[i] - DECAY_RATE);
-            }
-        }
+uint8_t MicroFX3::calculateHeight() {
+    // Moving average over history
+    uint32_t sum = 0;
+    for(int i = 0; i < HISTORY_SIZE; i++) {
+        sum += sampleHistory[i];
     }
+    uint16_t average = sum / HISTORY_SIZE;
+    
+    // Convert to height (0-16)
+    return map(average, 0, 2500, 0, 16);
 }
 
 void MicroFX3::update(Display& matrix) {
-    analyzeMicrophoneData();
-    updatePeaks();
+    measureSignal();
+    uint8_t height = calculateHeight();
     
-    // Clear display
+    // Clear matrix
     matrix.clear();
     
-    // Draw frequency bands and peaks
-    for(int x = 0; x < NUM_BANDS; x++) {
-        // Draw band level
-        for(int y = 0; y < bandLevels[x]; y++) {
-            matrix.setPixel(x, 15-y, true);
-        }
-        
-        // Draw peak
-        if(peakLevels[x] > 0) {
-            matrix.setPixel(x, 15-peakLevels[x], true);
+    // Draw VU-meter
+    for(int i = 0; i < height; i++) {
+        for(int x = 0; x < 16; x++) {
+            // Calculate variable intensity based on height
+            uint8_t rowIntensity = map(i, 0, 15, intensity, intensity/4);
+            if(random(100) < rowIntensity) {
+                matrix.setPixel(x, 15-i, true);
+            }
         }
     }
     

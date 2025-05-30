@@ -11,9 +11,9 @@
 #include "microFX1.h"
 #include "microFX2.h"
 #include "microFX3.h"
-//#include "pulseFX1.h"
-//#include "pulseFX2.h"
-//#include "pulseFX3.h"
+//#include "pulseFX1.h" --> To be implemented
+//#include "pulseFX2.h" --> To be implemented
+//#include "pulseFX3.h" --> To be implemented
 #include "twitchAPI.h"
 
 // For ESP32 temperature
@@ -51,10 +51,15 @@ enum SystemState {
 };
 
 // Global variables
-SystemState    currentState  = STATE_OFF;
-uint8_t        currentMode   = MODE_CLOCK;
-uint8_t        currentPage   = 0;
-SettingsOption currentOption = OPTION_CASE_TEMP;
+SystemState    currentState  = STATE_RUN;        // Click any button to start if set to STATE_OFF
+uint8_t        currentMode   = MODE_CLOCK;       // MODE_CLOCK by default
+uint8_t        currentPage   = 0;                // PAGE_CLOCK_TIME by default
+SettingsOption currentOption = OPTION_CASE_TEMP; // Default option
+
+// Title display variables 
+unsigned long lastTitleDisplay = 0;
+bool displayingTitle = false;
+const unsigned long TITLE_DURATION = 1000; // 1 second
 
 // Twitch variables
 unsigned long lastTwitchDisplayTime = 0;
@@ -67,7 +72,7 @@ bool demoMode = false;
 unsigned long lastDemoChange = 0;
 const unsigned long DEMO_INTERVAL = 30000; // 30 seconds
 
-// Effets visuels
+// Vusual effects
 //FreeFX1 freeFX1;
 //FreeFX2 freeFX2;
 //FreeFX3 freeFX3;
@@ -107,9 +112,20 @@ void displayClockPage() {
       pageContent = rtcClock.getYearString();
       break;
   }
+  
+  unsigned long currentTime = millis();
 
-  //matrix.scrollText(pageTitle, settings.getScrollDelay(), 1); // To be adapted for temporary page title display
-  matrix.displayValue(pageContent);
+  // Show title when page changes or during first second
+  if (displayingTitle) {
+    if (currentTime - lastTitleDisplay >= TITLE_DURATION) {
+      displayingTitle = false;
+      matrix.displayValue(pageContent);
+    } else {
+      matrix.displayValue(pageTitle);
+    }
+  } else {
+    matrix.displayValue(pageContent);
+  }
 }
 
 // Micro pages display
@@ -158,6 +174,8 @@ void changeMode(uint8_t newMode) {
   switch(newMode) {
     case MODE_CLOCK:
       matrix.clear();
+      lastTitleDisplay = millis();
+      displayingTitle = true;      
       displayClockPage();
       DEBUG_PRINTLN("  Mode : CLOCK");
       break;
@@ -184,6 +202,8 @@ void changePage(uint8_t newPage) {
   // Display
   switch(currentMode) {
     case MODE_CLOCK:
+      lastTitleDisplay = millis();
+      displayingTitle = true;
       displayClockPage();
       break;
     case MODE_MICRO:
@@ -384,9 +404,9 @@ void onYellowButtonShortPress() {
       delay(1000);
       demoMode = true;
       lastDemoChange = 0;
-      // Initialiser avec une page aléatoire
-      currentMode = random(3);  // 0 à 2
-      currentPage = random(3);  // 0 à 2
+      // Init with random page
+      currentMode = random(3);  // 0 to 2
+      currentPage = random(3);  // 0 to 2
       currentState = STATE_RUN;
       // Ne pas réinitialiser la page en cours
       /*

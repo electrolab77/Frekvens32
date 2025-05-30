@@ -2,20 +2,47 @@
 
 FreeFX3::FreeFX3(Settings* settings) {
     this->settings = settings;
+    stagnationCounter = 0;
+    wasActive = false;
+    // Initialize all grids to false
+    for(int x = 0; x < MATRIX_WIDTH; x++) {
+        for(int y = 0; y < MATRIX_HEIGHT; y++) {
+            grid[x][y] = false;
+            nextGrid[x][y] = false;
+            lastGrid[x][y] = false;
+        }
+    }
 }
 
 void FreeFX3::begin() {
     randomizeGrid();
     lastUpdate = millis();
+    stagnationCounter = 0;
+    // Initialize lastGrid different from grid to avoid immediate stagnation
+    for(int x = 0; x < MATRIX_WIDTH; x++) {
+        for(int y = 0; y < MATRIX_HEIGHT; y++) {
+            lastGrid[x][y] = !grid[x][y];
+        }
+    }
 }
 
 void FreeFX3::randomizeGrid() {
-    // Initialize with random cells (about 40% alive)
+    // Initialize with random cells (about 25% alive)
     for(int x = 0; x < MATRIX_WIDTH; x++) {
         for(int y = 0; y < MATRIX_HEIGHT; y++) {
-            grid[x][y] = (random(100) < 40);
+            grid[x][y] = (random(100) < 25);
+            lastGrid[x][y] = grid[x][y];
         }
     }
+}
+
+bool FreeFX3::hasLife() {
+    for(int x = 0; x < MATRIX_WIDTH; x++) {
+        for(int y = 0; y < MATRIX_HEIGHT; y++) {
+            if(grid[x][y]) return true;
+        }
+    }
+    return false;
 }
 
 int FreeFX3::countNeighbors(int x, int y) {
@@ -38,16 +65,10 @@ int FreeFX3::countNeighbors(int x, int y) {
 }
 
 void FreeFX3::computeNextGeneration() {
-    // Apply Conway's Game of Life rules:
-    // 1. Any live cell with fewer than two live neighbors dies (underpopulation)
-    // 2. Any live cell with two or three live neighbors lives on
-    // 3. Any live cell with more than three live neighbors dies (overpopulation)
-    // 4. Any dead cell with exactly three live neighbors becomes alive (reproduction)
-    
+    // Apply Game of Life rules first
     for(int x = 0; x < MATRIX_WIDTH; x++) {
         for(int y = 0; y < MATRIX_HEIGHT; y++) {
             int neighbors = countNeighbors(x, y);
-            
             if(grid[x][y]) {
                 // Cell is alive
                 nextGrid[x][y] = (neighbors == 2 || neighbors == 3);
@@ -58,37 +79,59 @@ void FreeFX3::computeNextGeneration() {
         }
     }
     
-    // Copy next generation to current
+    // Then update grids
     for(int x = 0; x < MATRIX_WIDTH; x++) {
         for(int y = 0; y < MATRIX_HEIGHT; y++) {
+            lastGrid[x][y] = grid[x][y];
             grid[x][y] = nextGrid[x][y];
         }
     }
 }
 
+bool FreeFX3::isGridStagnant() {
+    for(int x = 0; x < MATRIX_WIDTH; x++) {
+        for(int y = 0; y < MATRIX_HEIGHT; y++) {
+            if(grid[x][y] != lastGrid[x][y]) return false;
+        }
+    }
+    return true;
+}
+
 unsigned long FreeFX3::getDelay() {
+    // Calculate delay based on FX speed (10-99)
     uint8_t speed = settings->getFxSpeed();
     return map(speed, 10, 99, 1000, 50);
 }
 
+static const uint8_t STAGNATION_LIMIT = 5; // Changed from 5 to 10
+
 void FreeFX3::update(Display &display) {
     unsigned long currentTime = millis();
+    
+    // Check if we just came back to this effect
+    if (!wasActive) {
+        DEBUG_PRINTLN("> Game of Life new start");
+        randomizeGrid();
+        stagnationCounter = 0;
+        wasActive = true;
+    }
     
     if(currentTime - lastUpdate >= getDelay()) {
         lastUpdate = currentTime;
         
-        // Check if grid is static or empty
-        bool hasLife = false;
-        for(int x = 0; x < MATRIX_WIDTH && !hasLife; x++) {
-            for(int y = 0; y < MATRIX_HEIGHT && !hasLife; y++) {
-                if(grid[x][y]) hasLife = true;
-            }
-        }
+        // Compute next generation first
+        computeNextGeneration();
         
-        if(!hasLife) {
-            randomizeGrid(); // Restart if no cells are alive
+        // Then check for stagnation
+        if(!hasLife() || isGridStagnant()) {
+            stagnationCounter++;
+            if(stagnationCounter >= STAGNATION_LIMIT) {
+                DEBUG_PRINTLN("> Game of Life reset");
+                randomizeGrid();
+                stagnationCounter = 0;
+            }
         } else {
-            computeNextGeneration();
+            stagnationCounter = 0;
         }
         
         // Update display
@@ -102,4 +145,8 @@ void FreeFX3::update(Display &display) {
         }
         display.update();
     }
+}
+
+void FreeFX3::setWasActive(bool active) {
+    wasActive = active;
 }

@@ -3,6 +3,7 @@
 
 #include "display.h"
 #include "settings.h"
+#include "defines.h"
 
 #define MATRIX_WIDTH 16
 #define MATRIX_HEIGHT 16
@@ -12,17 +13,24 @@ private:
     Settings* settings;
     bool grid[MATRIX_WIDTH][MATRIX_HEIGHT];
     bool nextGrid[MATRIX_WIDTH][MATRIX_HEIGHT];
-    unsigned long lastUpdate = 0;
-
+    bool lastGrid[MATRIX_WIDTH][MATRIX_HEIGHT];
+    unsigned long lastUpdate;
+    uint8_t stagnationCounter;
+    static const uint8_t STAGNATION_LIMIT = 5;
+    
     void randomizeGrid();
     int countNeighbors(int x, int y);
     void computeNextGeneration();
+    bool isGridStagnant();
     unsigned long getDelay();
-    
+    bool hasLife();
+    bool wasActive;
+
 public:
     FreeFX3(Settings* settings);
     void begin();
     void update(Display &display);
+    void setWasActive(bool active); 
 };
 
 #endif

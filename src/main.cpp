@@ -201,7 +201,12 @@ void changeMode(uint8_t newMode) {
 void changePage(uint8_t newPage) {
   // Assignment
   currentPage = newPage;
-  
+
+  // Reset FreeFX3 when switching to it
+  if (currentMode == MODE_FREE && newPage == PAGE_FREE_FX3) {
+      freeFX3.begin();
+  }
+
   // Display
   switch(currentMode) {
     case MODE_CLOCK:
@@ -210,13 +215,13 @@ void changePage(uint8_t newPage) {
       displayClockPage();
       break;
     case MODE_FREE:
-      //displayFreePage();
+      displayFreePage();
       break;
     case MODE_MICRO:
       displayMicroPage();
       break;
     case MODE_PULSE:
-      //displayPulsePage();
+      displayPulsePage();
       break;
   }
 }
@@ -397,22 +402,6 @@ void onYellowButtonShortPress() {
       displayingTwitchInfo = false;
       twitch.enable();
       currentState = STATE_RUN;
-      // Do not reset current page
-      /*
-      switch(currentMode) {
-        case MODE_CLOCK:
-          displayClockPage();
-          break;
-        case MODE_FREE:
-          displayFreePage();
-          break;
-        case MODE_MICRO:
-          displayMicroPage();
-          break;
-        case MODE_PULSE:
-          displayPulsePage();
-          break;
-      }*/
     }
     else if (currentOption == OPTION_DEMO_MODE) {
       matrix.stopScroll(); 
@@ -424,22 +413,6 @@ void onYellowButtonShortPress() {
       currentMode = random(3);  // 0 to 2
       currentPage = random(3);  // 0 to 2
       currentState = STATE_RUN;
-      // Do not reset current page
-      /*
-      switch(currentMode) {
-        case MODE_CLOCK:
-          displayClockPage();
-          break;
-        case MODE_FREE:
-          displayFreePage();
-          break;
-        case MODE_MICRO:
-          displayMicroPage();
-          break;
-        case MODE_PULSE:
-          displayPulsePage();
-          break;
-      }*/
     }
     else {
       settings.nextValue(currentOption);  // Change value for all other options

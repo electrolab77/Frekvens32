@@ -7,6 +7,12 @@
 #include <ArduinoJson.h>
 #include "credentials.h" 
 
+// Add enum for Display mode
+enum StatusMode {
+    STATUS_CYCLE,
+    STATUS_RANDOM
+};
+
 class TwitchAPI {
 private:
     String accessToken = "";
@@ -20,14 +26,19 @@ private:
     bool updateStreamInfo();
     bool updateChannelInfo();
     uint8_t currentInfoIndex = 0;
-    static const uint8_t INFO_COUNT = 6; // Nombre total d'infos à faire défiler
+    static const uint8_t INFO_COUNT = 6; // Total number of informations to scroll
 
+    // Twitch Infos
     String streamTitle;  // Stream Title
     String streamerName; // Streamer Name
-    String startTime;    // Stream start time
+    String startTime;    // Stream Start Time
+
+    // Custom texts
     String customText1 = "GRAB YOUR BEER AND CHILL WITH US";
     String customText2 = "REPLAYS ON MIXCLOUD / GIAN77";
     String customText3 = "THIS IS A JOURNEY INTO SOUND";
+
+    String getTextForIndex(uint8_t index);
 
 public:
     TwitchAPI();
@@ -42,7 +53,7 @@ public:
     String getCurrentTitle() const { return streamTitle; }
     String getStreamerName() const { return TWITCH_BROADCASTER_ID; }
     String getStreamUptime() const;
-    String getNextStatusText();    
+    String getNextStatusText(StatusMode mode = STATUS_CYCLE);    
 };
 
 #endif

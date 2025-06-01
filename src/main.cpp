@@ -2,21 +2,31 @@
 #include <Arduino.h>
 #include "defines.h"
 #include "settings.h"
-#include "clock.h"
 #include "font6x6.h"
 #include "button.h"
 #include "wifiNTP.h"
-#include "pulse.h"
+#include "clock.h"
 #include "display.h"
+
+// Free FX
+//#include "free.h"
 #include "freeFX1.h"
 #include "freeFX2.h"
 #include "freeFX3.h"
+
+// Micro FX
+//#include "micro.h"
 #include "microFX1.h"
 #include "microFX2.h"
 #include "microFX3.h"
+
+// Pulse FX
+//#include "pulse.h"
 //#include "pulseFX1.h" --> To be implemented
 //#include "pulseFX2.h" --> To be implemented
 //#include "pulseFX3.h" --> To be implemented
+
+// Twitch API
 #include "twitchAPI.h"
 
 // State of the system
@@ -57,7 +67,9 @@ Button    yellowButton(PIN_BTN_YELLOW);
 Settings  settings;
 Clock     rtcClock;
 WifiNTP   wifiNTP(&rtcClock);
-Pulse     pulse;
+//Free      free;
+//Micro     micro;
+//Pulse     pulse;
 TwitchAPI twitch;
 
 // Visual effects
@@ -93,7 +105,7 @@ void displayClockPage() {
   
   unsigned long currentTime = millis();
 
-  // Show title when page changes or during first second
+  // Show title when page changes
   if (displayingTitle) {
     if (currentTime - lastTitleDisplay >= TITLE_DURATION) {
       displayingTitle = false;
@@ -473,8 +485,8 @@ void setup() {
   //free.begin(); --> To be verified
 
   // Init Pulse
-  DEBUG_PRINTLN("  Init Pulse");
-  pulse.begin();
+  DEBUG_PRINTLN("  Init Pulse --> To be verified");
+  //pulse.begin(); --> To be implemented
 
   // Init FX
   DEBUG_PRINTLN("  Init FX Pages");
@@ -561,19 +573,19 @@ void loop() {
       // Handle display window every minute
       if (!displayingTwitchInfo && (currentTime - lastTwitchDisplayTime >= 60000 || lastTwitchDisplayTime == 0)) {
         DEBUG_PRINTLN();
-        DEBUG_PRINTLN("TWITCH SCROLL START");
+        DEBUG_PRINTLN("  TWITCH SCROLL : START");
         displayingTwitchInfo = true;
         lastTwitchDisplayTime = currentTime;
 
-        String displayText = twitch.getNextStatusText();
-        DEBUG_PRINTLN("  Display Text : " + displayText);
+        String displayText = twitch.getNextStatusText(STATUS_CYCLE); // STATUS_CYCLE (default) or STATUS_RANDOM
+        DEBUG_PRINTLN("    Display Text : " + displayText);
         matrix.clear();
         matrix.scrollText(displayText, settings.getScrollDelay(), 1); // Scroll one time
       } 
       
       // Check if scroll is complete
       if (displayingTwitchInfo && matrix.isScrollComplete()) {
-        DEBUG_PRINTLN("TWITCH SCROLL STOP");
+        DEBUG_PRINTLN("  TWITCH SCROLL STOP");
         displayingTwitchInfo = false;
         matrix.stopScroll();
       }

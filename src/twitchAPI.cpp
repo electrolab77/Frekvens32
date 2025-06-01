@@ -1,5 +1,9 @@
 #include "twitchAPI.h"
 #include "defines.h"
+#include "clock.h"
+
+// Externally defined RTC clock instance
+extern RTC_DS3231 rtcClock;
 
 TwitchAPI::TwitchAPI() : enabled(false), currentInfoIndex(0) {}
 
@@ -9,7 +13,7 @@ void TwitchAPI::begin() {
 
 void TwitchAPI::enable() {
     DEBUG_PRINTLN();
-    DEBUG_PRINTLN("Enable Twitch Mode");
+    DEBUG_PRINTLN("TWITCH MODE");
     if (!enabled) {
         enabled = true;
         DEBUG_PRINTLN("  Twitch Mode : ON");
@@ -49,23 +53,22 @@ void TwitchAPI::enable() {
 }
 
 void TwitchAPI::disable() {
-    DEBUG_PRINTLN();
-    DEBUG_PRINTLN("Disable Twitch Mode");
+    DEBUG_PRINTLN("  Disable Twitch Mode");
     if (enabled) {
         enabled = false;
-        DEBUG_PRINTLN("  Twitch Mode : OFF");
+        DEBUG_PRINTLN("    Twitch Mode : OFF");
         WiFi.disconnect(true);
-        DEBUG_PRINTLN("  WiFi : OFF");
+        DEBUG_PRINTLN("    WiFi : OFF");
         WiFi.mode(WIFI_OFF);
         streamTitle = "";
-        DEBUG_PRINTLN("  Reset Stream Title : OK");
+        DEBUG_PRINTLN("    Reset Stream Title : OK");
         streamerName = "";
-        DEBUG_PRINTLN("  Reset Streamer Name : OK");
+        DEBUG_PRINTLN("    Reset Streamer Name : OK");
         startTime = "";
-        DEBUG_PRINTLN("  Reset Start Time : OK");
+        DEBUG_PRINTLN("    Reset Start Time : OK");
         isLive = false;
     } else {
-        DEBUG_PRINTLN("  > Twitch Mode already OFF !");
+        DEBUG_PRINTLN("    > Twitch Mode already OFF !");
     }
 }
 
@@ -144,39 +147,49 @@ bool TwitchAPI::updateStreamInfo() {
     return success;
 }
 
-String TwitchAPI::getNextStatusText() {
+String TwitchAPI::getNextStatusText(StatusMode mode) {
+    return "UPTIME " + getStreamUptime(); // TEMP
     if (!enabled) return "OFF";
     if (!isLive) {
         currentInfoIndex = 0;
         return "STREAM OFFLINE";
     }
-    
+
     String status;
-    switch(currentInfoIndex) {
-        case 0:
-            status = getStreamerName(); // Streamer Name
-            break;
-        case 1:
-            status = customText1; //.length() > 0 ? customText1 : "CUSTOM TEXT 01";
-            break;
-        case 2:
-            status = getCurrentTitle(); // Stream Title
-            break;
-        case 3:
-            status = customText2; //.length() > 0 ? customText2 : "CUSTOM TEXT 02";
-            break;
-        case 4:
-            status = "UPTIME : " + getStreamUptime(); // Uptime
-            break;
-        case 5:
-            status = customText3; //.length() > 0 ? customText3 : "CUSTOM TEXT 03";
-            break;
+    uint8_t newIndex;
+    
+    if (mode == STATUS_RANDOM) {
+        // Get random index different from current
+        do {
+            newIndex = random(INFO_COUNT);
+        } while (newIndex == currentInfoIndex);
+    } else {
+        // Get next index in cycle, skipping if same text
+        do {
+            newIndex = (currentInfoIndex + 1) % INFO_COUNT;
+            // Get text for this index to compare
+            String newText = getTextForIndex(newIndex);
+            String currentText = getTextForIndex(currentInfoIndex);
+            if (newText != currentText) break;
+            newIndex = (newIndex + 1) % INFO_COUNT;
+        } while (true);
     }
     
-    // Increment index for next time
-    currentInfoIndex = (currentInfoIndex + 1) % INFO_COUNT;
-    
-    return status;
+    currentInfoIndex = newIndex;
+    return getTextForIndex(newIndex);
+}
+
+// Add new private helper method
+String TwitchAPI::getTextForIndex(uint8_t index) {
+    switch(index) {
+        case 0: return getStreamerName();
+        case 1: return customText1;
+        case 2: return getCurrentTitle();
+        case 3: return customText2;
+        case 4: return "UPTIME " + getStreamUptime();
+        case 5: return customText3;
+        default: return "ERROR";
+    }
 }
 
 bool TwitchAPI::update() {
@@ -193,23 +206,64 @@ bool TwitchAPI::update() {
 }
 
 String TwitchAPI::getStreamUptime() const {
-    if (startTime.isEmpty()) return "UNKNOWN";
+    DEBUG_PRINTLN("    === Stream Uptime Debug ===");
+    String result = "00:00:00";
     
-    // Parse the ISO8601 date from Twitch
-    struct tm tm;
-    strptime(startTime.c_str(), "%Y-%m-%dT%H:%M:%SZ", &tm);
-    time_t startTime = mktime(&tm);
+    if (startTime.isEmpty()) {
+        DEBUG_PRINTLN("    Error: Empty start time");
+        return result;
+    }
+    DEBUG_PRINTLN("    Start time (ISO): " + startTime);
     
-    // Get current time
-    time_t now;
-    time(&now);
+    // Parse ISO8601 UTC date
+    struct tm startTm = {0};
+    if (!strptime(startTime.c_str(), "%Y-%m-%dT%H:%M:%SZ", &startTm)) {
+        DEBUG_PRINTLN("    Error: Failed to parse start time");
+        return "ERROR";
+    }
     
+    // Convert to timestamp keeping UTC
+    startTm.tm_isdst = 0;
+    
+    // Custom timegm implementation
+    char *tz = getenv("TZ");
+    setenv("TZ", "", 1); 
+    tzset();
+    time_t start = mktime(&startTm);
+    if (tz) {
+        setenv("TZ", tz, 1);
+    } else {
+        unsetenv("TZ");
+    }
+    tzset();
+    
+    DEBUG_PRINTLN("    Start time (UTC): " + String(start));
+       
+    // Get current UTC time from RTC (subtract 2 hours to convert from local to UTC)
+    DateTime now = rtcClock.now();
+    time_t nowTime = now.unixtime() - (2 * 3600);
+    DEBUG_PRINTLN("    Current RTC time (UTC): " + String(nowTime));
+
     // Calculate difference
-    int diff = now - startTime;
+    time_t diff = nowTime - start;
+    if (diff < 0) diff = 0;
+    DEBUG_PRINTLN("    Time difference: " + String(diff));
     
-    // Format uptime
-    int hours = diff / 3600;
-    int minutes = (diff % 3600) / 60;
+    // Format as HH:MM:SS
+    unsigned int hours = diff / 3600;
+    unsigned int minutes = (diff % 3600) / 60;
+    unsigned int seconds = diff % 60;
+    DEBUG_PRINTLN("    Hours: " + String(hours));
+    DEBUG_PRINTLN("    Minutes: " + String(minutes));
+    DEBUG_PRINTLN("    Seconds: " + String(seconds));
+
+    char buffer[9];
+    snprintf(buffer, sizeof(buffer), "%02u:%02u:%02u", 
+             hours % 100, minutes % 60, seconds % 60);
+   
+    result = String(buffer);
+    DEBUG_PRINTLN("    Formatted: " + result);
+    DEBUG_PRINTLN("    ===========================");
     
-    return String(hours) + "H" + (minutes < 10 ? "0" : "") + String(minutes);
+    return result;
 }

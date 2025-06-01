@@ -148,7 +148,6 @@ bool TwitchAPI::updateStreamInfo() {
 }
 
 String TwitchAPI::getNextStatusText(StatusMode mode) {
-    return "UPTIME " + getStreamUptime(); // TEMP
     if (!enabled) return "OFF";
     if (!isLive) {
         currentInfoIndex = 0;

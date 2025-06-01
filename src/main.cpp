@@ -52,6 +52,8 @@ unsigned long lastTwitchDisplayTime = 0;
 bool displayingTwitchInfo = false;
 uint8_t scrollCount = 0;
 const uint8_t SCROLL_MAX = 1;
+uint8_t lastTwitchMode = MODE_CLOCK;
+uint8_t lastTwitchPage = 0;
 
 // Demo variables
 bool demoMode = false;
@@ -532,8 +534,8 @@ void loop() {
         // Choose new random mode and page, avoiding last combination
         uint8_t newMode, newPage;
         do {
-            newMode = random(2); // Only CLOCK and FREE modes
-            newPage = random(3);
+            newMode = random(2); // Only 2 modes : 0=CLOCK, 1=FREE
+            newPage = random(3); // 0-2
         } while (newMode == lastDemoMode && newPage == lastDemoPage);
         
         DEBUG_PRINTLN();
@@ -577,12 +579,30 @@ void loop() {
         displayingTwitchInfo = true;
         lastTwitchDisplayTime = currentTime;
 
-        String displayText = twitch.getNextStatusText(STATUS_CYCLE); // STATUS_CYCLE (default) or STATUS_RANDOM
-        DEBUG_PRINTLN("    Display Text : " + displayText);
+        String displayText = twitch.getNextStatusText(STATUS_CYCLE);
+        DEBUG_PRINTLN("  Display Text : " + displayText);
         matrix.clear();
-        matrix.scrollText(displayText, settings.getScrollDelay(), 1); // Scroll one time
-      } 
-      
+        matrix.scrollText(displayText, settings.getScrollDelay(), 1);
+
+        // Choose new random mode and page, avoiding last combination
+        uint8_t newMode, newPage;
+        do {
+            newMode = random(2) + 1; // Only 2 modes : 1=FREE or 2=MICRO
+            newPage = random(3);     // 0-2
+        } while (newMode == lastTwitchMode && newPage == lastTwitchPage);
+        
+        DEBUG_PRINTLN("  Previous Mode/Page : " + String(lastTwitchMode) + "/" + String(lastTwitchPage));
+        DEBUG_PRINTLN("  New Mode/Page : " + String(newMode) + "/" + String(newPage));
+        
+        // Save current as last before changing
+        lastTwitchMode = currentMode;
+        lastTwitchPage = currentPage;
+        
+        // Update current mode and page
+        currentMode = newMode;
+        currentPage = newPage;
+      }
+
       // Check if scroll is complete
       if (displayingTwitchInfo && matrix.isScrollComplete()) {
         DEBUG_PRINTLN("  TWITCH SCROLL STOP");
@@ -591,24 +611,17 @@ void loop() {
       }
       
       if (!displayingTwitchInfo) {
-        // Return to normal display
+        // Display current random effect
         switch(currentMode) {
-          case MODE_CLOCK:
-            displayClockPage();
-            break;
           case MODE_FREE:
             displayFreePage();
             break;
           case MODE_MICRO:
             displayMicroPage();
             break;
-          case MODE_PULSE:
-            displayPulsePage();
-            break;
         }
       }
-    }
-    else {
+    } else {
       // Normal mode display
       switch(currentMode) {
         case MODE_CLOCK:
@@ -626,7 +639,7 @@ void loop() {
       }
     }
   }
-  
+
   matrix.updateScroll();
   delay(10);
 }

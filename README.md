@@ -54,12 +54,12 @@ This project is a customizable ESP32-based LED matrix display inspired by the IK
 
 ## 🖼️ Display Modes
 
-1. **Clock Mode**: HHMM, DDMM or YYYY display using the RTC module.
-2. **Free Mode**: Display visual efects with no specific sync source.
-3. **Micro Mode**: Detects loud sounds and triggers effects.
-4. **Pulse Mode**: Animates in sync with incoming PPQN clock pulses. **Not yet implemented**
-5. **Demo Mode**: Display random CLOCK and FREE pages every 30 seconds.
-6. **Twitch Mode**: Display Twitch stream information alternatively with the selected visual effect.
+1. **CLOCK**: HHMM, DDMM or YYYY display using the RTC module.
+2. **FREE**: Display visual efects with no specific sync source.
+3. **MICRO**: Detects loud sounds and triggers effects.
+4. **PULSE**: Animates in sync with incoming PPQN clock pulses. **Not yet implemented**
+5. **DEMO**: Display random CLOCK and FREE pages every 30 seconds.
+6. **TWITCH**: Display Twitch stream information alternatively with the selected visual effect.
 
 ---
 

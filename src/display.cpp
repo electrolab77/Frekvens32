@@ -1,4 +1,5 @@
 #include "display.h"
+#include "defines.h"
 
 // Initialize the matrix
 void Display::begin() {
@@ -135,32 +136,88 @@ void Display::updateScroll() {
 
 // Display up to 4 char on the screen
 void Display::displayValue(const String& value) {
-    // Initialization of positions
-    int16_t x1 = 1;
-    int16_t x2 = 9;
-    int16_t y1 = 1;
-    int16_t y2 = 9;
-    
-    // Clear full or only bottom half of the display
-    if (value.length() > 2) {
-        clear();
-    } else {
-        clear("bottom");
+    // If blinkg in progressn do not update the display
+    if (!isBlinking) {
+        // Initialisation of positions
+        int16_t x1 = 1;
+        int16_t x2 = 9;
+        int16_t y1 = 1;
+        int16_t y2 = 9;
+        
+        // Clear full or only bottom half of the display
+        if (value.length() > 2) {
+            clear();
+        } else {
+            clear("bottom");
+        }
+        
+        // Affichage
+        if (value.length() == 1) {
+            drawChar(value[0], x2, y2);
+        } else if (value.length() == 2) {
+            drawChar(value[0], x2, y1);
+            drawChar(value[1], x2, y2);
+        } else {
+            drawChar(value[0], x1, y1);
+            drawChar(value[1], x1, y2);
+            drawChar(value[2], x2, y1);
+            drawChar(value[3], x2, y2);
+        }
+        update();
     }
+}
+
+void Display::blinkDisplay(unsigned long speed, uint8_t count) {
+    DEBUG_PRINTLN("Starting blink display:");
+    DEBUG_PRINTLN("  Speed: " + String(speed));
+    DEBUG_PRINTLN("  Count: " + String(count));
+    isBlinking = true;
+    blinkState = true;
+    blinkCount = 0;
+    maxBlinks = count;
+    blinkDelay = speed;
+    lastBlinkTime = millis();
+}
+
+void Display::stopBlink() {
+    isBlinking = false;
+    blinkState = true;  // Ensure display is on when stopping
+    update();  // Update display to show final state
+}
+
+void Display::updateBlink() {
+    if (!isBlinking) return;
     
-    // Affichage
-    if (value.length() == 1) {
-        drawChar(value[0], x2, y2);
-    } else if (value.length() == 2) {
-        drawChar(value[0], x2, y1);
-        drawChar(value[1], x2, y2);
-    } else {
-        drawChar(value[0], x1, y1);
-        drawChar(value[1], x1, y2);
-        drawChar(value[2], x2, y1);
-        drawChar(value[3], x2, y2);
+    unsigned long currentTime = millis();
+    if (currentTime - lastBlinkTime >= blinkDelay) {
+        lastBlinkTime = currentTime;
+        blinkState = !blinkState;
+        
+        DEBUG_PRINTLN("Blink state: " + String(blinkState));
+        
+        if (!blinkState) {
+            blinkCount++;
+            DEBUG_PRINTLN("Blink count: " + String(blinkCount) + "/" + String(maxBlinks));
+            
+            if (maxBlinks > 0 && blinkCount >= maxBlinks) {
+                DEBUG_PRINTLN("Blink complete");
+                stopBlink();
+                return;
+            }
+        }
+        
+        // Apply the current state
+        if (blinkState) {
+            sendFrame();  // Show current frame content
+        } else {
+            // Turn off display without modifying frame buffer
+            digitalWrite(LATCH_PIN, LOW);
+            for (int i = 0; i < 32; i++) {
+                shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, 0x00);
+            }
+            digitalWrite(LATCH_PIN, HIGH);
+        }
     }
-    update();
 }
 
 // Update the display

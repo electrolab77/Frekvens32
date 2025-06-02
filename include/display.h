@@ -27,6 +27,14 @@ class Display {
     uint16_t scrollPassCount;   
     uint16_t scrollMaxPasses;  
 
+    // Blink variables
+    bool isBlinking;
+    bool blinkState;
+    uint8_t blinkCount;
+    uint8_t maxBlinks;
+    unsigned long lastBlinkTime;
+    unsigned long blinkDelay;
+
     // Send the current frame to the display
     void sendFrame();
 
@@ -45,6 +53,10 @@ class Display {
     void stopScroll() { currentScrollText = ""; }
     void displayValue(const String& value);
     void update();
+    void blinkDisplay(unsigned long speed, uint8_t count = 0);
+    void stopBlink();
+    void updateBlink();
+    bool isBlinkActive() const { return isBlinking; }
 };
 
 #endif

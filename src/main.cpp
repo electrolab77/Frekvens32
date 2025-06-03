@@ -524,7 +524,7 @@ void setup() {
   DEBUG_PRINTLN("  Diplay CIAO");
   matrix.displayValue("CIAO");
   matrix.blinkDisplay(BLINK_SLOW, 3); // Blink slowly 3 times
-  delay(1000); // wait 1 second
+  //delay(1000); // wait 1 second
 }
 
 void loop() {
@@ -583,13 +583,12 @@ void loop() {
         
         // Handle display window every minute
         if (!displayingTwitchInfo && (currentTime - lastTwitchDisplayTime >= 60000 || lastTwitchDisplayTime == 0)) {
-          DEBUG_PRINTLN();
-          DEBUG_PRINTLN("  TWITCH SCROLL : START");
+          DEBUG_PRINTLN("  TWITCH SCROLL START");
           displayingTwitchInfo = true;
           lastTwitchDisplayTime = currentTime;
 
           String displayText = twitch.getNextStatusText(STATUS_CYCLE);
-          DEBUG_PRINTLN("  Display Text : " + displayText);
+          DEBUG_PRINTLN("    Display Text : " + displayText);
           matrix.clear();
           matrix.scrollText(displayText, settings.getScrollDelay(), 1);
 
@@ -600,8 +599,8 @@ void loop() {
               newPage = random(3);     // 0-2
           } while (newMode == lastTwitchMode && newPage == lastTwitchPage);
           
-          DEBUG_PRINTLN("  Previous Mode/Page : " + String(lastTwitchMode) + "/" + String(lastTwitchPage));
-          DEBUG_PRINTLN("  New Mode/Page : " + String(newMode) + "/" + String(newPage));
+          DEBUG_PRINTLN("    Previous Mode/Page : " + String(lastTwitchMode) + "/" + String(lastTwitchPage));
+          DEBUG_PRINTLN("    New Mode/Page : " + String(newMode) + "/" + String(newPage));
           
           // Save current as last before changing
           lastTwitchMode = currentMode;
@@ -649,7 +648,20 @@ void loop() {
       }
     }
   }
+
+  if (twitch.isEnabled()) { 
+    if (twitch.update(matrix.isScrolling())) { 
+        // Check for new events
+        if (twitch.hasNewEvent()) {
+            String eventMsg = twitch.getEventMessage();
+            if (!eventMsg.isEmpty()) {
+                matrix.scrollText(eventMsg, settings.getScrollDelay(), 1);
+            }
+        }
+    }
+  }
+  
   matrix.updateScroll();
   matrix.updateBlink();
-  delay(10);
+  delay(10); 
 }

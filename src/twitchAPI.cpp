@@ -5,7 +5,10 @@
 // Externally defined RTC clock instance
 extern RTC_DS3231 rtcClock;
 
-TwitchAPI::TwitchAPI() : enabled(false), currentInfoIndex(0) {}
+TwitchAPI::TwitchAPI() : 
+    enabled(false), 
+    currentInfoIndex(0),
+    lastEventMessage("") {}
 
 void TwitchAPI::begin() {
     disable(); // Initial state is disabled
@@ -191,17 +194,198 @@ String TwitchAPI::getTextForIndex(uint8_t index) {
     }
 }
 
-bool TwitchAPI::update() {
-    // Only check if connection is lost
+bool TwitchAPI::update(bool isScrolling) {
     if (!enabled) return false;
     
-    if (WiFi.status() != WL_CONNECTED) {
-        DEBUG_PRINTLN("  WiFi connection lost!");
-        disable();
-        return false;
+    unsigned long currentTime = millis();
+    
+    // Check WiFi connection and update stream info every 5 minutes
+    if (currentTime - lastConnectionCheck >= CONNECTION_CHECK_INTERVAL) {
+        lastConnectionCheck = currentTime;
+        
+        // First check WiFi connection
+        if (WiFi.status() != WL_CONNECTED) {
+            DEBUG_PRINTLN("  WiFi connection lost! Attempting reconnection...");
+            
+            // Disconnect and reconnect WiFi
+            WiFi.disconnect();
+            WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+            
+            // Wait for connection with timeout (5 seconds)
+            unsigned long startTime = millis();
+            while (WiFi.status() != WL_CONNECTED && millis() - startTime < 5000) {
+                DEBUG_PRINT(".");
+                delay(500);
+            }
+            
+            if (WiFi.status() == WL_CONNECTED) {
+                DEBUG_PRINTLN("  Reconnection successful!");
+                DEBUG_PRINTLN("    IP: " + WiFi.localIP().toString());
+                // Refresh access token after reconnection
+                if (!getAccessToken()) {
+                    DEBUG_PRINTLN("  Failed to refresh access token");
+                    disable();
+                    return false;
+                }
+            } else {
+                DEBUG_PRINTLN("  Reconnection failed");
+                disable();
+                return false;
+            }
+        }
+        
+        // Then update stream info if connected
+        if (WiFi.status() == WL_CONNECTED) {
+            DEBUG_PRINTLN("  WiFi connection OK");
+            DEBUG_PRINTLN("  Updating stream info...");
+            if (!updateStreamInfo()) {
+                DEBUG_PRINTLN("  Failed to update stream info");
+            }
+        }
+    }
+    
+    // Check for new events every 10 seconds, only if not scrolling
+    if (!isScrolling && currentTime - lastEventCheck >= EVENT_CHECK_INTERVAL) {
+        lastEventCheck = currentTime;
+        checkNewEvents();
     }
     
     return true;
+}
+
+bool TwitchAPI::checkNewEvents() {
+    bool hasNewEvents = false;
+    
+    if (checkNewFollowers()) hasNewEvents = true;
+    if (checkNewSubscribers()) hasNewEvents = true;
+    if (checkNewRaids()) hasNewEvents = true;
+    
+    return hasNewEvents;
+}
+
+bool TwitchAPI::checkNewFollowers() {
+    HTTPClient http;
+    String url = "https://api.twitch.tv/helix/users/follows?to_id=" + String(TWITCH_BROADCASTER_ID) + "&first=1"; // user_login ???
+    
+    http.begin(url);
+    http.addHeader("Client-ID", TWITCH_CLIENT_ID);
+    http.addHeader("Authorization", "Bearer " + accessToken);
+    
+    int httpCode = http.GET();
+    bool hasNew = false;
+    
+    DEBUG_PRINT("> Check new followers : ");
+    if (httpCode == 200) {
+        StaticJsonDocument<1024> doc;
+        deserializeJson(doc, http.getString());
+        
+        if (doc["data"][0]) {
+            String followerId = doc["data"][0]["from_id"].as<String>();
+            if (followerId != lastFollowerId) {
+                String username = doc["data"][0]["from_name"].as<String>();
+                DEBUG_PRINTLN("  New follow from " + username);
+                lastFollowerId = followerId;
+                hasNew = true;
+            }
+        }
+        DEBUG_PRINTLN("OK");
+    } else {
+        DEBUG_PRINTLN("FAILED (" + String(httpCode) + ")");
+    }
+    
+    http.end();
+    return hasNew;
+}
+
+bool TwitchAPI::checkNewSubscribers() {
+    HTTPClient http;
+    String url = "https://api.twitch.tv/helix/subscriptions?broadcaster_id=" + String(TWITCH_BROADCASTER_ID) + "&first=1";
+    
+    http.begin(url);
+    http.addHeader("Client-ID", TWITCH_CLIENT_ID);
+    http.addHeader("Authorization", "Bearer " + accessToken);
+    
+    int httpCode = http.GET();
+    bool hasNew = false;
+    
+    DEBUG_PRINT("> Check new subscriber : ");
+    if (httpCode == 200) {
+        StaticJsonDocument<1024> doc;
+        deserializeJson(doc, http.getString());
+        
+        if (doc["data"][0]) {
+            String subscriberId = doc["data"][0]["user_id"].as<String>();
+            if (subscriberId != lastSubscriberId) {
+                String username = doc["data"][0]["user_name"].as<String>();
+                DEBUG_PRINTLN("  New subscribtion from " + username);
+                lastSubscriberId = subscriberId;
+                lastEventMessage = formatEventMessage("sub", username);
+                hasNew = true;
+            }
+        }
+        DEBUG_PRINTLN("OK");
+    } else {
+        DEBUG_PRINTLN("FAILED (" + String(httpCode) + ")");
+    }
+    
+    http.end();
+    return hasNew;
+}
+
+bool TwitchAPI::checkNewRaids() {
+    HTTPClient http;
+    String url = "https://api.twitch.tv/helix/raids?to_broadcaster_id=" + String(TWITCH_BROADCASTER_ID);
+    
+    http.begin(url);
+    http.addHeader("Client-ID", TWITCH_CLIENT_ID);
+    http.addHeader("Authorization", "Bearer " + accessToken);
+    
+    int httpCode = http.GET();
+    bool hasNew = false;
+    
+    DEBUG_PRINT("> Check new RAID : ");
+    if (httpCode == 200) {
+        StaticJsonDocument<1024> doc;
+        deserializeJson(doc, http.getString());
+        
+        if (doc["data"][0]) {
+            String raiderId = doc["data"][0]["from_broadcaster_id"].as<String>();
+            if (raiderId != lastRaiderId) {
+                String username = doc["data"][0]["from_broadcaster_user_name"].as<String>();
+                DEBUG_PRINTLN("  New RAID from " + username);
+                lastRaiderId = raiderId;
+                lastEventMessage = formatEventMessage("raid", username);
+                hasNew = true;
+            }
+        }
+        DEBUG_PRINTLN("OK");
+    } else {
+        DEBUG_PRINTLN("FAILED (" + String(httpCode) + ")");
+    }
+    
+    http.end();
+    return hasNew;
+}
+
+bool TwitchAPI::hasNewEvent() const {
+    return !lastEventMessage.isEmpty();
+}
+
+String TwitchAPI::getEventMessage() {
+    String message = lastEventMessage;
+    lastEventMessage.clear(); // Clear after reading
+    return message;
+}
+
+String TwitchAPI::formatEventMessage(const String& type, const String& username) {
+    if (type == "follow") {
+        return "NEW FOLLOW FROM " + username;
+    } else if (type == "sub") {
+        return "NEW SUB FROM " + username;
+    } else if (type == "raid") {
+        return username + " IS RAIDING";
+    }
+    return "";
 }
 
 String TwitchAPI::getStreamUptime() const {

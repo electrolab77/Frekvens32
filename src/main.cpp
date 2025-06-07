@@ -649,6 +649,7 @@ void loop() {
     }
   }
 
+  /* --> Generate Freeze
   if (twitch.isEnabled()) { 
     if (twitch.update(matrix.isScrolling())) { 
         // Check for new events
@@ -660,6 +661,7 @@ void loop() {
         }
     }
   }
+  */
   
   matrix.updateScroll();
   matrix.updateBlink();

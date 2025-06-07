@@ -12,6 +12,14 @@ FreeFX3::FreeFX3(Settings* settings) {
             lastGrid[x][y] = false;
         }
     }
+    historyIndex = 0;
+    for(int h = 0; h < HISTORY_SIZE; h++) {
+        for(int x = 0; x < MATRIX_WIDTH; x++) {
+            for(int y = 0; y < MATRIX_HEIGHT; y++) {
+                historyGrid[h][x][y] = false;
+            }
+        }
+    }
 }
 
 void FreeFX3::begin() {
@@ -86,6 +94,14 @@ void FreeFX3::computeNextGeneration() {
             grid[x][y] = nextGrid[x][y];
         }
     }
+    
+    // Store current grid in history
+    for(int x = 0; x < MATRIX_WIDTH; x++) {
+        for(int y = 0; y < MATRIX_HEIGHT; y++) {
+            historyGrid[historyIndex][x][y] = grid[x][y];
+        }
+    }
+    historyIndex = (historyIndex + 1) % HISTORY_SIZE;
 }
 
 bool FreeFX3::isGridStagnant() {
@@ -95,6 +111,26 @@ bool FreeFX3::isGridStagnant() {
         }
     }
     return true;
+}
+
+bool FreeFX3::isOscillating() {
+    int matchCount = 0;
+    // Compare current grid with each historical grid
+    for(int h = 0; h < HISTORY_SIZE; h++) {
+        bool matches = true;
+        for(int x = 0; x < MATRIX_WIDTH; x++) {
+            for(int y = 0; y < MATRIX_HEIGHT; y++) {
+                if(grid[x][y] != historyGrid[h][x][y]) {
+                    matches = false;
+                    break;
+                }
+            }
+            if(!matches) break;
+        }
+        if(matches) matchCount++;
+    }
+    // Return true only if we find multiple matches in history
+    return matchCount >= 2; // Require at least 2 matches to confirm oscillation
 }
 
 unsigned long FreeFX3::getDelay() {
@@ -110,7 +146,7 @@ void FreeFX3::update(Display &display) {
     
     // Check if we just came back to this effect
     if (!wasActive) {
-        DEBUG_PRINTLN("> Game of Life new start");
+        DEBUG_PRINTLN("  > Game of Life new start");
         randomizeGrid();
         stagnationCounter = 0;
         wasActive = true;
@@ -123,10 +159,10 @@ void FreeFX3::update(Display &display) {
         computeNextGeneration();
         
         // Then check for stagnation
-        if(!hasLife() || isGridStagnant()) {
+        if(!hasLife() || isGridStagnant() || isOscillating()) {
             stagnationCounter++;
             if(stagnationCounter >= STAGNATION_LIMIT) {
-                DEBUG_PRINTLN("> Game of Life reset");
+                DEBUG_PRINTLN("  > Game of Life reset (stagnation or oscillation)");
                 randomizeGrid();
                 stagnationCounter = 0;
             }

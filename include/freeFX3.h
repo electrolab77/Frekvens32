@@ -17,7 +17,10 @@ private:
     unsigned long lastUpdate;
     uint8_t stagnationCounter;
     static const uint8_t STAGNATION_LIMIT = 5;
-    
+    static const uint8_t HISTORY_SIZE = 4;  // Nombre de générations à mémoriser
+    bool historyGrid[HISTORY_SIZE][MATRIX_WIDTH][MATRIX_HEIGHT];
+    uint8_t historyIndex;
+
     void randomizeGrid();
     int countNeighbors(int x, int y);
     void computeNextGeneration();
@@ -25,6 +28,7 @@ private:
     unsigned long getDelay();
     bool hasLife();
     bool wasActive;
+    bool isOscillating();
 
 public:
     FreeFX3(Settings* settings);

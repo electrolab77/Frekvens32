@@ -52,11 +52,18 @@ const uint8_t FONT_6X6[] PROGMEM = {
     0x06, 0x03, 0x06, 0x0C, 0x18, 0x30, 0x60, // '/'
     0x06, 0x60, 0x30, 0x18, 0x0C, 0x06, 0x03, // '\'  
     0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3F, // '_'
-    0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00  // ' ' (space)
-   
+    0x06, 0x00, 0x00, 0x1E, 0x1E, 0x00, 0x00, // '-'
+    0x06, 0x0C, 0x0C, 0x0C, 0x00, 0x00, 0x00, // '''
+    0x06, 0x1B, 0x1B, 0x1B, 0x00, 0x00, 0x00, // '"'
+    0x06, 0x0C, 0x18, 0x30, 0x18, 0x0C, 0x06, // '<'
+    0x06, 0x30, 0x18, 0x0C, 0x18, 0x30, 0x60, // '>'
+    0x06, 0x12, 0x3F, 0x12, 0x12, 0x3F, 0x12, // '#'
+    0x06, 0x0C, 0x0C, 0x3F, 0x3F, 0x0C, 0x0C, // '+'
+    0x06, 0x00, 0x3F, 0x3F, 0x00, 0x3F, 0x3F, // '='
+    0x06, 0x14, 0x3E, 0x1C, 0x3E, 0x14, 0x00, // '*'
+    0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00  // ' ' (space)   
 };
 
-// Get the pattern of a character
 void Font6x6::getCharPattern(char c, uint8_t pattern[CHAR_HEIGHT]) {
     // Convert to uppercase
     if (c >= 'a' && c <= 'z') {
@@ -87,8 +94,26 @@ void Font6x6::getCharPattern(char c, uint8_t pattern[CHAR_HEIGHT]) {
         index = 43 * (CHAR_HEIGHT + 1);
     } else if (c == '_') {
         index = 44 * (CHAR_HEIGHT + 1);
-    } else { // Space or unknown character
+    } else if (c == '-') {
         index = 45 * (CHAR_HEIGHT + 1);
+    } else if (c == '\'') {
+        index = 46 * (CHAR_HEIGHT + 1);
+    } else if (c == '"') {
+        index = 47 * (CHAR_HEIGHT + 1);
+    } else if (c == '<') {
+        index = 48 * (CHAR_HEIGHT + 1);
+    } else if (c == '>') {
+        index = 49 * (CHAR_HEIGHT + 1);
+    } else if (c == '#') {
+        index = 50 * (CHAR_HEIGHT + 1);
+    } else if (c == '+') {
+        index = 51 * (CHAR_HEIGHT + 1);
+    } else if (c == '=') {
+        index = 52 * (CHAR_HEIGHT + 1);
+    } else if (c == '*') {
+        index = 53 * (CHAR_HEIGHT + 1);
+    } else { // Space or unknown character
+        index = 54 * (CHAR_HEIGHT + 1);
     }
 
     // Reading the pattern from the PROGMEM

@@ -30,7 +30,7 @@ This project is a customizable ESP32-based LED matrix display inspired by the IK
 
 | Component               | Signal/Usage            | ESP32 GPIO/PIN           | Power Source            | GND Connection               | Notes                                        |
 |-------------------------|-------------------------|--------------------------|-------------------------|------------------------------|----------------------------------------------|
-| LED Matrix (SCT)        | Data (IN)               | GPIO 23                  | VIN (5V from ESP32)     | GND of ESP32                 | Or original IKEA's PS but avoid ESP32 3.3V   |
+| LED Matrix (SCT)        | Data (IN)               | GPIO 23                  | 3.7V DC/DC Buck Converter from VIN (5V from ESP32)| GND of ESP32                 | Or original IKEA's PS but avoid ESP32 3.3V   |
 |                         | Clock                   | GPIO 18                  |                         |                              |                                              |
 |                         | Latch                   | GPIO 5                   |                         |                              |                                              |
 | Audio Mic (MAX4466)     | OUT (analog)            | GPIO 34                  | 3.3V from ESP32         | GND of ESP32                 | Avoid GPIO 36/39 with Wi-Fi                  |

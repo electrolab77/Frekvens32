@@ -168,9 +168,9 @@ void Display::displayValue(const String& value) {
 }
 
 void Display::blinkDisplay(unsigned long speed, uint8_t count) {
-    DEBUG_PRINTLN("Starting blink display:");
-    DEBUG_PRINTLN("  Speed: " + String(speed));
-    DEBUG_PRINTLN("  Count: " + String(count));
+    DEBUG_PRINTLN("  Starting blink display");
+    DEBUG_PRINTLN("    Speed : " + String(speed));
+    DEBUG_PRINTLN("    Count : " + String(count));
     isBlinking = true;
     blinkState = true;
     blinkCount = 0;
@@ -182,7 +182,8 @@ void Display::blinkDisplay(unsigned long speed, uint8_t count) {
 void Display::stopBlink() {
     isBlinking = false;
     blinkState = true;  // Ensure display is on when stopping
-    update();  // Update display to show final state
+    clear(); // Clear display at the end
+    update(); // Update display to show final state
 }
 
 void Display::updateBlink() {
@@ -193,14 +194,22 @@ void Display::updateBlink() {
         lastBlinkTime = currentTime;
         blinkState = !blinkState;
         
-        DEBUG_PRINTLN("Blink state: " + String(blinkState));
-        
-        if (!blinkState) {
+        // Increment count only on ON states
+        if (blinkState) {
             blinkCount++;
-            DEBUG_PRINTLN("Blink count: " + String(blinkCount) + "/" + String(maxBlinks));
+            DEBUG_PRINTLN("  Blink count : " + String(blinkCount) + "/" + String(maxBlinks));
             
+            // Check if we've completed all blinks
             if (maxBlinks > 0 && blinkCount >= maxBlinks) {
-                DEBUG_PRINTLN("Blink complete");
+                DEBUG_PRINTLN("  Blink complete");
+
+                // Force final OFF state
+                digitalWrite(LATCH_PIN, LOW);
+                for (int i = 0; i < 32; i++) {
+                    shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, 0x00);
+                }
+                digitalWrite(LATCH_PIN, HIGH);
+                
                 stopBlink();
                 return;
             }

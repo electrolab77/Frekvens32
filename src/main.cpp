@@ -192,8 +192,8 @@ void changeMode(uint8_t newMode) {
       matrix.clear();
       lastTitleDisplay = millis();
       displayingTitle = true;      
-      displayClockPage();
       DEBUG_PRINTLN("  Mode : CLOCK");
+      displayClockPage();
       break;
     case MODE_FREE:
       matrix.clear();
@@ -326,7 +326,6 @@ void onRedButtonShortPress() {
       matrix.stopScroll();
       twitch.disable();
       DEBUG_PRINTLN("  Twitch Mode : OFF"); 
-      DEBUG_PRINTLN(); 
     } else {   
       changeMode((currentMode + 1) % 3);
     }
@@ -423,6 +422,8 @@ void onYellowButtonShortPress() {
     }
     else if (currentOption == OPTION_DEMO_MODE) {
       matrix.stopScroll(); 
+      DEBUG_PRINTLN();
+      DEBUG_PRINTLN("DEMO MODE");
       matrix.displayValue("DEMO");
       matrix.blinkDisplay(BLINK_SLOW, 3); // Blink slowly 3 times
       //delay(1000);
@@ -599,8 +600,8 @@ void loop() {
               newPage = random(3);     // 0-2
           } while (newMode == lastTwitchMode && newPage == lastTwitchPage);
           
-          DEBUG_PRINTLN("    Previous Mode/Page : " + String(lastTwitchMode) + "/" + String(lastTwitchPage));
-          DEBUG_PRINTLN("    New Mode/Page : " + String(newMode) + "/" + String(newPage));
+          DEBUG_PRINT("    Set new Mode/Page : "+ String(newMode) + "/" + String(newPage));
+          DEBUG_PRINTLN(" (Previous : " + String(lastTwitchMode) + "/" + String(lastTwitchPage) + ")");
           
           // Save current as last before changing
           lastTwitchMode = currentMode;
@@ -665,5 +666,5 @@ void loop() {
   
   matrix.updateScroll();
   matrix.updateBlink();
-  delay(10); 
+  delay(10);
 }

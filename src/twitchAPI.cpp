@@ -29,7 +29,7 @@ void TwitchAPI::enable() {
         unsigned long startTime = millis();
         while (WiFi.status() != WL_CONNECTED && millis() - startTime < 10000) {
             DEBUG_PRINT(".");
-            delay(500);
+            delay(250);
         }
         
         if (WiFi.status() == WL_CONNECTED) {
@@ -39,14 +39,7 @@ void TwitchAPI::enable() {
             
             // Get initial stream info
             if (getAccessToken()) {
-                DEBUG_PRINTLN("  Access Token : OK");
-                if (updateStreamInfo()) {
-                    DEBUG_PRINTLN("  Stream Info : OK");
-                } else {
-                    DEBUG_PRINTLN("  Stream Info : KO");
-                }
-            } else {
-                DEBUG_PRINTLN("  Access Token : FAILED");
+                updateStreamInfo();
             }
         } else {
             DEBUG_PRINTLN(" FAILED !");
@@ -59,10 +52,10 @@ void TwitchAPI::disable() {
     DEBUG_PRINTLN("  Disable Twitch Mode");
     if (enabled) {
         enabled = false;
-        DEBUG_PRINTLN("    Twitch Mode : OFF");
+        DEBUG_PRINTLN("    Disable Twitch Mode : OK");
         WiFi.disconnect(true);
-        DEBUG_PRINTLN("    WiFi : OFF");
         WiFi.mode(WIFI_OFF);
+        DEBUG_PRINTLN("    Disconnect WiFi : OK");
         streamTitle = "";
         DEBUG_PRINTLN("    Reset Stream Title : OK");
         streamerName = "";
@@ -70,6 +63,7 @@ void TwitchAPI::disable() {
         startTime = "";
         DEBUG_PRINTLN("    Reset Start Time : OK");
         isLive = false;
+        DEBUG_PRINTLN("    Reset Live Status : OK");
     } else {
         DEBUG_PRINTLN("    > Twitch Mode already OFF !");
     }
@@ -105,8 +99,10 @@ bool TwitchAPI::getAccessToken() {
 }
 
 bool TwitchAPI::updateStreamInfo() {
-    DEBUG_PRINTLN("  Update Stream Info");
-    if (!getAccessToken()) return false;
+    if (!getAccessToken()) {
+        DEBUG_PRINTLN("  Update Stream Info : FAILED");
+        return false;
+    }
 
     HTTPClient http;
     String url = "https://api.twitch.tv/helix/streams?user_login=" + String(TWITCH_BROADCASTER_ID);
@@ -117,8 +113,8 @@ bool TwitchAPI::updateStreamInfo() {
     
     int httpCode = http.GET();
     bool success = false;
-    
-    DEBUG_PRINT("  Update Info : ");
+
+    DEBUG_PRINT("  Update Stream Info : ");
     if (httpCode == 200) {
         StaticJsonDocument<1024> doc;
         deserializeJson(doc, http.getString());
@@ -131,19 +127,19 @@ bool TwitchAPI::updateStreamInfo() {
             success = true;
             
             DEBUG_PRINTLN("SUCCESS");
-            DEBUG_PRINTLN("  Stream is LIVE");
-            DEBUG_PRINTLN("  Stream Title : " + streamTitle);
-            DEBUG_PRINTLN("  Streamer Name : " + streamerName);
-            DEBUG_PRINTLN("  Start Time : " + startTime);
+            DEBUG_PRINTLN("    Stream is LIVE");
+            DEBUG_PRINTLN("    Stream Title : " + streamTitle);
+            DEBUG_PRINTLN("    Streamer Name : " + streamerName);
+            DEBUG_PRINTLN("    Start Time : " + startTime);
         } else {
             isLive = false;
             DEBUG_PRINTLN("FAILED");
-            DEBUG_PRINTLN("  Stream is OFFLINE");
+            DEBUG_PRINTLN("    Stream is OFFLINE");
         }
     } else {
         isLive = false;
         DEBUG_PRINTLN("FAILED");
-        DEBUG_PRINTLN("  Code: " + String(httpCode));
+        DEBUG_PRINTLN("    Code: " + String(httpCode));
     }
     
     http.end();
@@ -236,11 +232,8 @@ bool TwitchAPI::update(bool isScrolling) {
         
         // Then update stream info if connected
         if (WiFi.status() == WL_CONNECTED) {
-            DEBUG_PRINTLN("  WiFi connection OK");
-            DEBUG_PRINTLN("  Updating stream info...");
-            if (!updateStreamInfo()) {
-                DEBUG_PRINTLN("  Failed to update stream info");
-            }
+            DEBUG_PRINTLN("  WiFi connection : OK");
+            updateStreamInfo();
         }
     }
     

@@ -19,6 +19,7 @@
 #include "microFX1.h"
 #include "microFX2.h"
 #include "microFX3.h"
+#include "microFX4.h"
 
 // Pulse FX
 //#include "pulse.h"
@@ -85,6 +86,7 @@ FreeFX3 freeFX3(&settings);
 MicroFX1 microFX1;
 MicroFX2 microFX2;
 MicroFX3 microFX3;
+MicroFX4 microFX4;
 //PulseFX1 pulseFX1(&pulse); --> To be implemented
 //PulseFX2 pulseFX2(&pulse); --> To be implemented
 //PulseFX3 pulseFX3(&pulse); --> To be implemented
@@ -159,7 +161,11 @@ void displayMicroPage() {
       microFX3.update(matrix);
       //matrix.displayValue("MIC3"); // TEMP
       break;
-  }
+    case PAGE_MICRO_FX4:
+      microFX4.update(matrix);
+      //matrix.displayValue("MIC4"); // TEMP
+      break;
+    }
 }
 
 // Pulse pages display
@@ -512,6 +518,7 @@ void setup() {
   microFX1.begin();
   microFX2.begin();
   microFX3.begin();
+  microFX4.begin();
   //pulseFX1.begin(); --> To be implemented
   //pulseFX2.begin(); --> To be implemented
   //pulseFX3.begin(); --> To be implemented

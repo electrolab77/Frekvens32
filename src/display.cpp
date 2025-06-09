@@ -197,7 +197,7 @@ void Display::updateBlink() {
         // Increment count only on ON states
         if (blinkState) {
             blinkCount++;
-            DEBUG_PRINTLN("  Blink count : " + String(blinkCount) + "/" + String(maxBlinks));
+            DEBUG_PRINTLN("    Blink count : " + String(blinkCount) + "/" + String(maxBlinks));
             
             // Check if we've completed all blinks
             if (maxBlinks > 0 && blinkCount >= maxBlinks) {

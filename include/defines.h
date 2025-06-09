@@ -17,6 +17,19 @@ uint8_t temprature_sens_read();
 #define MODE_MICRO      2
 #define MODE_PULSE      3
 
+// Pages per mode
+#define CLOCK_PAGES 3  // TIME, DATE, YEAR
+#define FREE_PAGES  3  // FX1, FX2, FX3
+#define MICRO_PAGES 3  // FX1, FX2, FX3
+#define PULSE_PAGES 3  // FX1, FX2, FX3
+
+// Get number of pages for a given mode
+#define GET_MODE_PAGES(mode) \
+    ((mode) == MODE_CLOCK ? CLOCK_PAGES : \
+     (mode) == MODE_FREE  ? FREE_PAGES  : \
+     (mode) == MODE_MICRO ? MICRO_PAGES : \
+     (mode) == MODE_PULSE ? PULSE_PAGES : 0)
+
 // Defines for pages
 #define PAGE_CLOCK_TIME 0
 #define PAGE_CLOCK_DATE 1

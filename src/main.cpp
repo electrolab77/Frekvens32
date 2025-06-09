@@ -186,6 +186,9 @@ void changeMode(uint8_t newMode) {
   currentMode = newMode;
   currentPage = 0;
   
+  // Get maximum pages for current mode
+  uint8_t maxPages = GET_MODE_PAGES(currentMode);
+
   //Display
   switch(newMode) {
     case MODE_CLOCK:
@@ -212,36 +215,41 @@ void changeMode(uint8_t newMode) {
       DEBUG_PRINTLN("  Mode : " + pulseText);
       break;
   }
-  DEBUG_PRINTLN("    Page : " + String(currentPage + 1));
+  DEBUG_PRINTLN("    Page : " + String(currentPage + 1) + "/" + String(maxPages));
 }
 
 // Page change function
 void changePage(uint8_t newPage) {
-  // Assignment
-  currentPage = newPage;
-
-  // Reset FreeFX3 when switching to it
-  if (currentMode == MODE_FREE && newPage == PAGE_FREE_FX3) {
-      freeFX3.begin();
-  }
-
-  // Display
-  switch(currentMode) {
-    case MODE_CLOCK:
-      lastTitleDisplay = millis();
-      displayingTitle = true;
-      displayClockPage();
-      break;
-    case MODE_FREE:
-      displayFreePage();
-      break;
-    case MODE_MICRO:
-      displayMicroPage();
-      break;
-    case MODE_PULSE:
-      displayPulsePage();
-      break;
-  }
+    // Get maximum pages for current mode
+    uint8_t maxPages = GET_MODE_PAGES(currentMode);
+    
+    // Ensure page is within bounds
+    currentPage = newPage % maxPages;
+    
+    // Reset FreeFX3 when switching to it
+    if (currentMode == MODE_FREE && currentPage == PAGE_FREE_FX3) {
+        freeFX3.begin();
+    }
+    
+    DEBUG_PRINTLN("    Page : " + String(currentPage + 1) + "/" + String(maxPages));
+    
+    // Display
+    switch(currentMode) {
+        case MODE_CLOCK:
+            lastTitleDisplay = millis();
+            displayingTitle = true;
+            displayClockPage();
+            break;
+        case MODE_FREE:
+            displayFreePage();
+            break;
+        case MODE_MICRO:
+            displayMicroPage();
+            break;
+        case MODE_PULSE:
+            displayPulsePage();
+            break;
+    }
 }
 
 // Settings menu handling
@@ -390,8 +398,8 @@ void onYellowButtonShortPress() {
       DEBUG_PRINTLN("  Twitch Mode : OFF");
       DEBUG_PRINTLN();  
     } else {
-      changePage((currentPage + 1) % 3);
-      DEBUG_PRINTLN("    Page : " + String(currentPage + 1));
+      uint8_t maxPages = GET_MODE_PAGES(currentMode);
+      changePage((currentPage + 1) % maxPages);
     }
   }
   else if (currentState == STATE_SET) {
@@ -544,15 +552,13 @@ void loop() {
           // Choose new random mode and page, avoiding last combination
           uint8_t newMode, newPage;
           do {
-              newMode = random(2); // Only 2 modes : 0=CLOCK, 1=FREE
-              newPage = random(3); // 0-2
+              newMode = random(2);  // Only 2 modes : 0=CLOCK or 1=FREE
+              newPage = random(GET_MODE_PAGES(newMode));
           } while (newMode == lastDemoMode && newPage == lastDemoPage);
-          
-          DEBUG_PRINTLN();
-          DEBUG_PRINTLN("DEMO MODE CHANGE");
-          DEBUG_PRINTLN("  Previous Mode/Page : " + String(lastDemoMode) + "/" + String(lastDemoPage));
-          DEBUG_PRINTLN("  New Mode/Page : " + String(newMode) + "/" + String(newPage));
-          
+
+          DEBUG_PRINT("  DEMO MODE CHANGE : " + String(currentMode) + "/" + String(currentPage));
+          DEBUG_PRINTLN(" -> " + String(newMode) + "/" + String(newPage));
+
           // Save current as last before changing
           lastDemoMode = currentMode;
           lastDemoPage = currentPage;
@@ -560,7 +566,9 @@ void loop() {
           // Update current mode and page
           currentMode = newMode;
           currentPage = newPage;
-          matrix.clear();
+
+
+          //matrix.clear(); // TEMP
         } else {  
           switch(currentMode) {
             case MODE_CLOCK:
@@ -600,9 +608,6 @@ void loop() {
               newPage = random(3);     // 0-2
           } while (newMode == lastTwitchMode && newPage == lastTwitchPage);
           
-          DEBUG_PRINT("    Set new Mode/Page : "+ String(newMode) + "/" + String(newPage));
-          DEBUG_PRINTLN(" (Previous : " + String(lastTwitchMode) + "/" + String(lastTwitchPage) + ")");
-          
           // Save current as last before changing
           lastTwitchMode = currentMode;
           lastTwitchPage = currentPage;
@@ -610,6 +615,9 @@ void loop() {
           // Update current mode and page
           currentMode = newMode;
           currentPage = newPage;
+
+          DEBUG_PRINT("    Set new Mode/Page : "+ String(newMode) + "/" + String(newPage));
+          DEBUG_PRINTLN(" (Previous : " + String(lastTwitchMode) + "/" + String(lastTwitchPage) + ")");
         }
 
         // Check if scroll is complete

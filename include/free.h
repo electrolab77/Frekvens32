@@ -31,4 +31,10 @@ class FreeFX3 : public Free {
         void update(Display &display) override;
 };
 
+class FreeFX4 : public Free {
+    public:
+        void begin() override;
+        void update(Display &display) override;
+};
+
 #endif

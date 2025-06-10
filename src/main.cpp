@@ -13,6 +13,7 @@
 #include "freeFX1.h"
 #include "freeFX2.h"
 #include "freeFX3.h"
+#include "freeFX4.h"
 
 // Micro FX
 //#include "micro.h"
@@ -83,6 +84,7 @@ TwitchAPI twitch;
 FreeFX1 freeFX1(&settings);
 FreeFX2 freeFX2(&settings);
 FreeFX3 freeFX3(&settings);
+FreeFX4 freeFX4(&settings);
 MicroFX1 microFX1;
 MicroFX2 microFX2;
 MicroFX3 microFX3;
@@ -143,7 +145,11 @@ void displayFreePage() {
       freeFX3.update(matrix);
       //matrix.displayValue("FRE3"); // TEMP
       break;
-  }
+    case PAGE_FREE_FX4:
+      freeFX4.update(matrix);
+      //matrix.displayValue("FRE4"); // TEMP
+      break;
+    }
 }
 
 // Micro pages display
@@ -515,6 +521,7 @@ void setup() {
   freeFX1.begin();
   freeFX2.begin();
   freeFX3.begin();
+  freeFX4.begin();
   microFX1.begin();
   microFX2.begin();
   microFX3.begin();
